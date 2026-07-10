@@ -84,19 +84,14 @@ def clone_repo(clone_url: str, dest_dir: Path) -> bool:
             capture_output=True, text=True, timeout=GIT_CLONE_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
-        # Mesmo bug encontrado e corrigido em scripts/02_collect_multiartifact.py
-        # (2026-07-06): sem isto, a exceção escapava sem limpar o clone
-        # parcial. Aqui a clonagem já é rasa (--depth 200), então o risco é
-        # menor, mas o mesmo cuidado é barato de aplicar.
+        # Sem isto, a exceção escapa sem limpar o clone parcial.
         shutil.rmtree(dest_dir, ignore_errors=True)
         logger.warning("Clone de %s estourou %ds; pulando.", clone_url, GIT_CLONE_TIMEOUT_SECONDS)
         return False
     return result.returncode == 0
 
 
-# =============================================================================
 # Mineração em code_comment (regex de verdade via git)
-# =============================================================================
 
 _GIT_GREP_MATCH_LINE_RE = re.compile(r"^(.+?):\d+:")
 
@@ -156,9 +151,7 @@ def mine_code_comments(repo_dir: Path, repo_full_name: str) -> list[dict]:
     return candidates
 
 
-# =============================================================================
 # Mineração em issue/PR/commit (query alargada + filtro local)
-# =============================================================================
 
 MAX_SEARCH_QUERY_CHARS = 256
 
@@ -232,11 +225,8 @@ def mine_api_artifact_batched(
 
         try:
             # client.paginate() é um generator — o request HTTP só acontece
-            # quando ele é iterado, então o `for item in ...` PRECISA estar
-            # dentro do try, senão GitHubAPIError escapa sem ser capturado
-            # (foi exatamente isso que derrubou a mineração em 2026-07-02,
-            # perdendo os candidatos já achados porque o CSV só é escrito
-            # no final da execução).
+            # quando ele é iterado, então o `for item in ...` precisa estar
+            # dentro do try, senão GitHubAPIError escapa sem ser capturado.
             items = client.paginate(
                 endpoint, params={"q": query, "per_page": 30},
                 is_search=True, items_key=items_key, max_items=MAX_API_CANDIDATES_PER_QUERY,
@@ -312,9 +302,7 @@ def mine_repo_code_comment_worker(repo: dict, clone_root: Path, keep_clones: boo
             shutil.rmtree(repo_dir, ignore_errors=True)
 
 
-# =============================================================================
 # Orquestração
-# =============================================================================
 
 def build_frequency_report(candidates: list[dict]) -> dict:
     by_pattern: dict[str, dict] = {}
@@ -412,14 +400,9 @@ def main() -> None:
             all_candidates.extend(mine_api_artifact_batched(client, batch, is_pr=False, is_commit=False))
             all_candidates.extend(mine_api_artifact_batched(client, batch, is_pr=True, is_commit=False))
             all_candidates.extend(mine_api_artifact_batched(client, batch, is_pr=None, is_commit=True))
-            # Gravação incremental (achado de 2026-07-08): a versão anterior
-            # só gravava no finally — uma interrupção externa do processo
-            # (não uma exceção Python, que o finally pegaria; algo como o
-            # processo ser morto pelo SO) já perdeu uma rodada inteira de
-            # ~1h de mineração, incluindo o loop da API inteiro já concluído
-            # mas nunca persistido. Salva a cada lote agora; o custo de
-            # reescrever o CSV inteiro é desprezível no volume desta
-            # ferramenta exploratória (dezenas a poucas centenas de linhas).
+            # Grava a cada lote, não só no finally: um kill externo do
+            # processo (não uma exceção Python) não passa pelo finally, e o
+            # custo de reescrever o CSV inteiro é desprezível nesse volume.
             _save_candidates()
 
         logger.info("Loop da API concluído. Aguardando workers de code_comment...")
