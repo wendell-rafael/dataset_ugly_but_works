@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "Se você usar este software, cite-o conforme abaixo."
+type: software
+title: "UBW Mining Infrastructure: infraestrutura de mineração multi-artefato do GitHub com tolerância a falhas"
+abstract: >-
+  Infraestrutura de coleta usada no estudo empírico UBW ("Ugly But It
+  Works") sobre comentários de resignação funcional em quatro tipos de
+  artefato do GitHub (comentário de código, mensagem de commit, corpo de
+  issue, corpo de pull request). Implementa rotação de tokens e batching de
+  consultas para lidar com rate limiting da API do GitHub, checkpoint
+  incremental tolerante a falhas em todas as etapas do pipeline, e
+  workarounds documentados para problemas de certificado TLS do serviço de
+  triagem (SEART-GHS).
+authors:
+  - given-names: "Wendell Rafael"
+    family-names: "Oliveira Nascimento"
+    email: wendell.nascimento@copin.ufcg.edu.br
+    affiliation: "Programa de Pós-Graduação em Ciência da Computação (PPGCC), Universidade Federal de Campina Grande (UFCG)"
+  - given-names: "João Arthur"
+    family-names: "Brunet Monteiro"
+    email: joao.arthur@computacao.ufcg.edu.br
+    affiliation: "Universidade Federal de Campina Grande (UFCG)"
+  - given-names: "Fabio Jorge"
+    family-names: "Almeida Morais"
+    email: fabio@computacao.ufcg.edu.br
+    affiliation: "Universidade Federal de Campina Grande (UFCG)"
+# Nota: dados de identificação civil (CPF, SIAPE, telefone, endereço)
+# exigidos pelo formulário de registro do INPI/NIT NÃO ficam neste arquivo
+# nem em nenhum outro arquivo versionado deste repositório — CITATION.cff
+# é metadado de citação, esperado público. Preencher esses dados
+# diretamente no formulário de registro, fora do controle de versão.
+license: MIT
+version: 0.1.0
+date-released: "2026-07-09"
+repository-code: "PREENCHER — URL do repositório git assim que existir (ainda não há git init neste diretório)"
+keywords:
+  - mineração de repositórios
+  - self-admitted technical debt
+  - GitHub API
+  - engenharia de software empírica
