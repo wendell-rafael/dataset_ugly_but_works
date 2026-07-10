@@ -59,13 +59,11 @@ def _literal_template(phrase: str, category_hint: str) -> PatternTemplate:
     )
 
 
-# Termos de julgamento de qualidade usados para "travar" o padrão
-# but_works (ver changelog abaixo). Lista curada a partir da literatura
-# (Maldonado et al., 2017; Ren et al., 2019) mais achados do próprio
-# piloto ("janky", descoberto organicamente em 2026-07-02). Inclui tanto
-# adjetivos ("kludgy") quanto substantivos usados na mesma posição
-# sintática ("a kludge but it works") — o que importa é o token, não a
-# classe gramatical estrita.
+# Termos de julgamento de qualidade que "travam" o padrão but_works (ver
+# comentário abaixo). Curada a partir da literatura (Maldonado et al., 2017;
+# Ren et al., 2019) + achados do piloto. Mistura adjetivos ("kludgy") e
+# substantivos na mesma posição sintática ("a kludge but it works") — o que
+# importa é o token, não a classe gramatical.
 QUALITY_ADJECTIVES: list[str] = [
     "ugly", "janky", "hacky", "messy", "dirty", "crude", "brittle", "fragile",
     "sloppy", "kludgy", "kludge", "hackish", "gross", "nasty", "clunky", "jury-rigged",
@@ -73,21 +71,15 @@ QUALITY_ADJECTIVES: list[str] = [
 _ADJ_ALT_ERE = "|".join(QUALITY_ADJECTIVES)
 _ADJ_ALT_PY = "|".join(re.escape(a) for a in QUALITY_ADJECTIVES)
 
+# but_works exige um adjetivo de QUALITY_ADJECTIVES antes de "but" — a
+# versão sem essa exigência (só adjacência de "but"/"however" com "works")
+# gerou 61 candidatos com 0/12 TP no piloto (ruído de compatibilidade tipo
+# "funciona no Chrome mas não no Firefox"); com o adjetivo, caiu pra 2
+# candidatos, ambos TP.
 PATTERN_TEMPLATES: list[PatternTemplate] = [
     PatternTemplate(
         name="but_works",
-        description=(
-            '"<adjetivo de qualidade> ... but ... works" (ex: "ugly but it works", '
-            '"janky but it works"). '
-            "CHANGELOG 2026-07-02: a versão original exigia só adjacência de "
-            '"but"/"however" com "works", sem exigir adjetivo — em piloto de 20 '
-            "repos, gerou 61 candidatos com 0/12 verdadeiro positivo na checagem "
-            "manual (ruído de \"X funciona no Chrome mas não no Firefox\", relato de "
-            "bug/limitação de compatibilidade, não resignação técnica). Refinado "
-            "para exigir um adjetivo de QUALITY_ADJECTIVES antes de \"but\" — na "
-            "mesma amostra, isso reduziu para 2 candidatos, ambos verdadeiros "
-            "positivos (incluindo a descoberta de \"janky\", fora do léxico oficial)."
-        ),
+        description='"<adjetivo de qualidade> ... but ... works" (ex: "ugly but it works")',
         git_ere=rf"({_ADJ_ALT_ERE}).{{0,25}}but.{{0,40}}works",
         python_re=rf"\b(?:{_ADJ_ALT_PY})\b[^.!?\n]{{0,25}}\bbut\b[^.!?\n]{{0,40}}\bworks?\b",
         api_keywords=("but", "works"),
@@ -115,20 +107,10 @@ PATTERN_TEMPLATES: list[PatternTemplate] = [
     ),
 ]
 
-# Frases literais candidatas propostas (ver conversa/relatório) — não fazem
-# parte de `ubw.lexicon.UBW_LEXICON`. Algumas variações que dependem de
-# "but ... works" (ex: "spaghetti but works") já são cobertas pelos
-# padrões estruturais acima (aparecem como `pre_but` no relatório de
-# frequência); só entram aqui como literal as que NÃO têm essa adjacência
-# garantida.
-#
-# STATUS 2026-07-03 (rodada de 50 repos, seed=7, checagem manual completa):
-# "ugly hack", "temporary fix", "temp fix", "stopgap" e "workaround for
-# now" foram PROMOVIDAS ao léxico oficial (ver CHANGELOG e
-# PROMOTED_EXPRESSIONS em ubw/lexicon.py). As demais tiveram zero hits e
-# permanecem aqui como lista de observação para rodadas futuras de
-# mineração — junto de "janky" (descoberta orgânica do padrão but_works,
-# n=2, amostra insuficiente para promover).
+# Frases literais candidatas — não fazem parte de `ubw.lexicon.UBW_LEXICON`.
+# As já promovidas ao léxico oficial (ver PROMOTED_EXPRESSIONS em
+# ubw/lexicon.py) continuam aqui de propósito, pra permitir remineração;
+# as demais são lista de observação sem evidência suficiente ainda.
 LITERAL_CANDIDATES: list[tuple[str, str]] = [
     ("ugly hack", "A"),
     ("kludge", "A"),
@@ -166,10 +148,8 @@ def find_matches(text: str, template: PatternTemplate) -> list[str]:
     return windows
 
 
-# 2026-07-03: looks_like_path_context foi movida para ubw/lexicon.py (a
-# promoção de "stopgap" ao léxico oficial tornou o filtro necessário também
-# na coleta oficial, não só na mineração). Reexportada aqui para manter a
-# interface de scripts/04_pattern_mining.py.
+# Reexportada de ubw/lexicon.py para manter a interface de
+# scripts/04_pattern_mining.py.
 from ubw.lexicon import looks_like_path_context  # noqa: E402,F401
 
 
