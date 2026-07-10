@@ -59,25 +59,18 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("ubw.collect")
 
-# 2026-07-06: elevado de 120s para 300s (achado da rodada final — `git log
-# -S <expr> --all` sobre o histórico de 0xPolygon/zkevm-prover, um
-# repositório grande, estourou 120s em 2 das 25 expressões e ficou sem
-# esses dois registros até serem completados manualmente). Cada expressão
-# do léxico dispara sua própria chamada `git log -S`, então o teto é por
-# (repo, expressão), não por repo inteiro — 300s é uma margem generosa sem
-# arriscar travar um worker por horas num repositório patológico.
+# Cada expressão do léxico dispara sua própria chamada `git log -S`, então
+# o teto é por (repo, expressão) — 300s dá margem para repositórios grandes
+# sem travar um worker por horas num caso patológico.
 GIT_TIMEOUT_SECONDS = 300
 GIT_CLONE_TIMEOUT_SECONDS = 900
 
-# Data de corte da coleta (Seção 3.4 — reprodutibilidade). É fixada uma
-# única vez no início da execução e usada para todo cálculo de censura /
-# tempo até evento no restante do script.
+# Fixada uma única vez no início da execução, usada para todo cálculo de
+# censura/tempo até evento (Seção 3.4 — reprodutibilidade).
 COLLECTION_CUTOFF = dt.datetime.now(dt.timezone.utc)
 
 
-# =============================================================================
 # Utilitários gerais
-# =============================================================================
 
 def parse_iso_datetime(value: Optional[str]) -> Optional[dt.datetime]:
     if not value:
@@ -176,18 +169,14 @@ def to_int(value) -> Optional[int]:
         return None
 
 
-# =============================================================================
-# Coleta via Search API (issues, PRs, commit messages) — batched por repo
+# Coleta via Search API (issues, PRs, commit messages) — batched por repo.
 #
-# Otimização final (2026-07-03): a Search API aceita múltiplos
-# qualificadores `repo:` na mesma query, com semântica de OR e atribuição
-# do resultado ao repositório de origem (verificado ao vivo em /search/
-# issues e /search/commits). Em vez de 1 query por (expressão, repo), a
-# coleta faz 1 query por (expressão, LOTE de repos), respeitando o teto de
-# 256 caracteres do parâmetro `q` — reduz o número de requisições de
-# busca em ~8x, e é essa a fase que domina o tempo total (30 req/min é
-# limite do servidor, inviolável por paralelismo).
-# =============================================================================
+# A Search API aceita múltiplos qualificadores `repo:` na mesma query, com
+# semântica de OR e atribuição do resultado ao repositório de origem. Em vez
+# de 1 query por (expressão, repo), a coleta faz 1 query por (expressão,
+# LOTE de repos), respeitando o teto de 256 caracteres de `q` — reduz o
+# número de requisições em ~8x nessa fase, que domina o tempo total (30
+# req/min é limite do servidor, inviolável por paralelismo).
 
 MAX_SEARCH_QUERY_CHARS = 256
 
@@ -247,12 +236,9 @@ def _drop_as_path_false_positive(expression: str, text: str) -> bool:
     )
 
 
-# Exclusão de artefatos criados por bots (achado da rodada final,
-# 2026-07-03): 44/108 registros de pr_body/issue_body vinham de PRs de
-# dependabot/renovate cujo body cita o CHANGELOG de uma dependência de
-# terceiro — a "admissão" é do autor da dependência, não do time do
-# repositório. Mesma classe de contaminação do vendoring em code_comment
-# (Seção 6 do RESULTADOS_PILOTO.md), agora no canal de issues/PRs.
+# Artefatos de bots (dependabot/renovate) citam o CHANGELOG de uma
+# dependência de terceiro no body — a "admissão" é do autor da dependência,
+# não do time do repositório, mesma classe de contaminação do vendoring.
 _BOT_LOGIN_EXACT = {"dependabot", "renovate", "github-actions", "greenkeeper", "snyk-bot", "pull"}
 
 
@@ -288,10 +274,8 @@ def _passes_content_filters(expression: str, text: str, author_login: Optional[s
     return True
 
 
-# Teto de resultados da Search API (Seção 3.3): 100/página x 10 páginas.
-# Fix 2026-07-09 (#1): usado para detectar truncamento silencioso das
-# queries batched (ver collect_issue_or_pr_records_batched /
-# collect_commit_message_records_batched abaixo).
+# Teto de resultados da Search API (100/página x 10 páginas) — usado para
+# detectar truncamento silencioso das queries batched abaixo.
 SEARCH_API_CAP = 1000
 
 
@@ -300,9 +284,8 @@ def _build_issue_pr_record(
 ) -> Optional[UBWRecord]:
     """Constrói um UBWRecord a partir de UM item da Search API de issues/PRs
     já resolvido para seu repo, aplicando os filtros de conteúdo (retorna
-    None se descartado). Extraído em 2026-07-09 (fix #1) para ser
-    compartilhado entre o caminho batched e o fallback per-repo do teto de
-    1000 resultados — evita duplicar a lógica item->UBWRecord.
+    None se descartado). Compartilhado entre o caminho batched e o fallback
+    per-repo do teto de 1000 resultados, para não duplicar essa lógica.
     """
     body = (item.get("body") or "").strip()
     author_login = (item.get("user") or {}).get("login")
@@ -351,8 +334,7 @@ def _build_issue_pr_record(
 
 
 def _build_commit_record(item: dict, repo: dict, expression: str, category: str) -> Optional[UBWRecord]:
-    """Análogo a `_build_issue_pr_record`, para itens da Search API de
-    commits (fix #1, 2026-07-09)."""
+    """Análogo a `_build_issue_pr_record`, para itens da Search API de commits."""
     commit_info = item.get("commit", {})
     committer_date = parse_iso_datetime(commit_info.get("committer", {}).get("date"))
     message = commit_info.get("message", "").strip()
@@ -402,14 +384,12 @@ def collect_issue_or_pr_records_batched(
     agrupados por repo_full_name (como consta no CSV de entrada), para que
     o chamador enriqueça e marque checkpoint por repositório.
 
-    Fix 2026-07-09 (#1): a Search API tem teto de 1000 resultados por
-    query; como a query batched cobre ~8 repos com `repo:` OR, esses repos
-    COMPARTILHAM o mesmo orçamento de 1000. Com `order=asc`, se uma
-    expressão comum estoura o teto no lote, os resultados mais RECENTES são
-    descartados silenciosamente. Detectamos isso (contagem de itens ==
-    SEARCH_API_CAP) e, quando acontece, refazemos a busca dessa expressão
-    UM repo de cada vez (cada um com seu próprio orçamento de 1000),
-    substituindo os resultados batched (truncados) pelos per-repo.
+    A Search API tem teto de 1000 resultados por query; como a query
+    batched cobre ~8 repos com `repo:` OR, eles COMPARTILHAM esse orçamento,
+    e com `order=asc` os resultados mais recentes são descartados em
+    silêncio se uma expressão comum estourar o teto no lote. Detectamos
+    isso (contagem de itens == SEARCH_API_CAP) e refazemos a busca dessa
+    expressão um repo de cada vez, substituindo os resultados truncados.
     """
     artifact_type = "pr_body" if is_pr else "issue_body"
     type_qualifier = "pr" if is_pr else "issue"
@@ -483,7 +463,7 @@ def collect_commit_message_records_batched(
 ) -> dict[str, list[UBWRecord]]:
     """Coleta commit_message para um LOTE de repositórios (ver
     collect_issue_or_pr_records_batched, inclusive o fallback de
-    truncamento no teto de 1000 resultados, fix 2026-07-09 #1)."""
+    truncamento no teto de 1000 resultados)."""
     lookup = _repo_lookup(repo_batch)
     by_repo: dict[str, list[UBWRecord]] = {r["repo_full_name"]: [] for r in repo_batch}
     qualifiers = _repo_qualifiers(repo_batch)
@@ -544,9 +524,7 @@ def collect_commit_message_records_batched(
     return by_repo
 
 
-# =============================================================================
 # Coleta: Comentários de código (clone local + git pickaxe)
-# =============================================================================
 
 def git_run(repo_dir: Path, args: list[str], check: bool = False, timeout: int = GIT_TIMEOUT_SECONDS) -> str:
     result = subprocess.run(
@@ -562,21 +540,15 @@ GIT_CLONE_MAX_RETRIES = 4
 GIT_CLONE_BACKOFF_BASE_SECONDS = 5.0
 
 
-# Achado da rodada de 784 repos (2026-07-06): repositórios com muito
-# asset binário no histórico (jogos de ritmo com áudio/imagem, coleções de
-# projetos de ML) faziam o clone estourar GIT_CLONE_TIMEOUT_SECONDS — 7
-# repos, 15GB de clones parciais nunca limpos. O clone é SEMPRE completo
-# (sem --depth): a metodologia da Seção 4 precisa do histórico inteiro
-# para achar o commit de introdução do comentário, que pode ser muito mais
-# antigo que os últimos N commits — um clone raso quebraria o cálculo de
-# time_to_event. `--filter=blob:limit=1m` faz clonagem parcial (partial
-# clone, suportado pelo GitHub): árvores/commits vêm completos, mas blobs
-# > 1MB só são baixados sob demanda — na prática nunca são, já que nenhum
-# arquivo de código-fonte real passa de 1MB. Teste manual (2026-07-06)
-# confirmou que isso REDUZ o volume transferido, mas não é garantia — um
-# repositório com milhares de arquivos pequenos (cada um abaixo do limite)
-# ainda pode estourar o timeout; nesse caso, a captura de TimeoutExpired
-# abaixo garante que ele falhe de forma limpa em vez de deixar lixo.
+# O clone é SEMPRE completo (sem --depth): a Seção 4 precisa do histórico
+# inteiro para achar o commit de introdução do comentário, que pode ser bem
+# mais antigo que os últimos N commits — um clone raso quebraria o cálculo
+# de time_to_event. `--filter=blob:limit=1m` faz clonagem parcial (árvores/
+# commits completos, blobs >1MB sob demanda — nenhum arquivo de código-fonte
+# real passa disso) para reduzir volume transferido em repos com muito
+# asset binário no histórico; não é garantia (repo com muitos arquivos
+# pequenos ainda pode estourar o timeout), daí a captura de TimeoutExpired
+# abaixo para falhar limpo em vez de deixar clone parcial pra trás.
 GIT_CLONE_BLOB_SIZE_LIMIT = "1m"
 
 
@@ -595,16 +567,12 @@ def clone_repo(clone_url: str, dest_dir: Path) -> bool:
                 capture_output=True, text=True, timeout=GIT_CLONE_TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired:
-            # Bug corrigido em 2026-07-06: esta exceção escapava sem ser
-            # capturada, pulando a limpeza do diretório parcial (finally de
-            # process_repo_code_comment nunca era alcançado, pois a exceção
-            # propagava a partir DAQUI, antes do try/finally do chamador) e
-            # deixando um clone corrompido que uma retomada futura reaproveitaria
-            # cegamente (`if dest_dir.exists(): reutiliza`, sem checar integridade).
+            # Sem capturar aqui, o diretório parcial nunca é limpo e uma
+            # retomada futura reaproveitaria um clone corrompido cegamente
+            # (`if dest_dir.exists(): reutiliza`, sem checar integridade).
             shutil.rmtree(dest_dir, ignore_errors=True)
-            # Não adianta tentar de novo com o mesmo teto de tempo — se o
-            # repositório é genuinamente grande, vai estourar de novo. Falha
-            # direto, sem consumir as GIT_CLONE_MAX_RETRIES tentativas.
+            # Repositório genuinamente grande vai estourar de novo com o
+            # mesmo teto — falha direto em vez de gastar as retries.
             logger.error(
                 "Clone de %s estourou %ds mesmo com --filter=blob:limit=%s "
                 "(repositório provavelmente muito grande). Desistindo; ficará "
@@ -751,13 +719,9 @@ def find_raw_events_for_expression(
                 continue
             extension = "." + path.rsplit(".", 1)[-1] if "." in path else ""
             for sign, text, line_no in changed_lines:
-                # Bug corrigido em 2026-07-06: era um substring puro, sem
-                # fronteira de palavra — "stopgap" casava dentro de
-                # "histopgap" (variável de código C/Fortran de engenharia,
-                # ex: hisxitop/histopele). lexicon.expression_in_text já
-                # tem o casamento com fronteira correto (mesmo usado no
-                # canal da API); `text` aqui é sempre uma única linha de
-                # diff, então a checagem por linha dela não perde nada.
+                # expression_in_text tem fronteira de palavra (evita, ex.,
+                # "stopgap" casando dentro de "histopgap"); `text` aqui é
+                # sempre uma única linha de diff, checagem por linha não perde nada.
                 if not lexicon.expression_in_text(expression, text):
                     continue
                 if not lexicon.looks_like_comment(text, extension):
@@ -900,14 +864,12 @@ def pair_events_into_records(
     return records
 
 
-# Exclusão em nível de git (pathspec magic `:(exclude,glob)`) para as
-# pastas de vendoring convencionais — evita gastar um `git show` por commit
-# nesses caminhos, em vez de só descartar o resultado depois (achado do
-# piloto de 20 repos: 0chain/0chain tinha 73% dos matches de code_comment
-# dentro de rocksdb-8.1.1/ vendorizado). Padrões sem nome convencional (ex:
-# "rocksdb-8.1.1/", pego pela heurística de regex em lexicon.is_vendored_path)
-# não dá para expressar como glob de pathspec, então continuam sendo
-# filtrados no pós-processamento em find_raw_events_for_expression.
+# Exclusão em nível de git (pathspec magic `:(exclude,glob)`) para pastas de
+# vendoring convencionais — evita gastar um `git show` por commit nesses
+# caminhos, em vez de só descartar o resultado depois. Padrões sem nome
+# convencional (ex: "rocksdb-8.1.1/") não dá pra expressar como glob de
+# pathspec, então continuam filtrados em find_raw_events_for_expression via
+# lexicon.is_vendored_path.
 _VENDOR_PATHSPEC_EXCLUDES = [
     f":(exclude,glob){folder}**"
     for folder in (
@@ -930,18 +892,14 @@ def collect_code_comment_records(repo_dir: Path, repo: dict) -> list[UBWRecord]:
     return pair_events_into_records(repo_dir, repo, all_events)
 
 
-# =============================================================================
 # Pós-processamento: idade do repositório + threshold (Seção 2.4)
-# =============================================================================
 
 def enrich_repo_age(records: list[UBWRecord], repo_age_days: Optional[int]) -> None:
     for rec in records:
         rec.repo_age_days = repo_age_days
 
 
-# =============================================================================
-# Paralelização de code_comment (ver docstring do módulo e main())
-# =============================================================================
+# Paralelização de code_comment (ver main())
 
 def process_repo_code_comment(
     repo: dict, clone_root: Path, keep_clones: bool, appender: CSVAppender, state: CheckpointState
@@ -1042,9 +1000,7 @@ def apply_threshold_and_split(full_csv: Path, out_dir: Path) -> None:
     logger.info("Contagens por repositório salvas em %s", counts_path)
 
 
-# =============================================================================
 # Orquestração principal
-# =============================================================================
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1092,23 +1048,17 @@ def main() -> None:
         repos = repos[: args.max_repos]
     logger.info("Carregados %d repositórios de %s", len(repos), args.repos_csv)
 
-    # Paralelização: a Search API tem um teto de throughput imposto pelo
-    # servidor (30 req/min, Seção 3.3) que nenhuma quantidade de threads
-    # consegue furar — então issue_body/pr_body/commit_message continuam
-    # em um único loop sequencial abaixo, exatamente como antes.
-    # code_comment (clone + git grep/log -S) não tem esse limite externo:
-    # roda em segundo plano num pool de threads, disparado ANTES do loop
-    # da API, para que os dois trabalhos se sobreponham em vez de somar.
+    # A Search API tem teto de throughput do servidor que threads não
+    # furam, então issue_body/pr_body/commit_message ficam num loop
+    # sequencial. code_comment (clone + git) não tem esse limite: roda em
+    # pool de threads em paralelo com o loop da API, disparado antes dele.
     #
-    # Trade-off aceito: repo_age_days de issue_body/pr_body/commit_message
-    # passa a usar sempre o created_at do SEART-GHS (não mais o primeiro
-    # commit local, que só fica disponível quando o worker de
-    # code_comment termina o clone daquele repositório específico — e a
-    # ordem entre os dois loops não é garantida). Isso é aceitável porque
-    # repo_age_days é documentado como variável de confusão (Tabela 3.5),
-    # não uma métrica primária, e os registros de code_comment continuam
-    # usando a data real do primeiro commit (calculada dentro do próprio
-    # worker, sem essa dependência de ordem).
+    # Trade-off: repo_age_days de issue_body/pr_body/commit_message usa
+    # sempre o created_at do SEART-GHS, não o primeiro commit local (que só
+    # fica pronto quando o worker de code_comment termina o clone, sem
+    # ordem garantida entre os dois loops) — aceitável porque é variável de
+    # confusão (Tabela 3.5), não métrica primária; code_comment continua
+    # usando a data real do primeiro commit, calculada dentro do worker.
     executor: Optional[ThreadPoolExecutor] = None
     code_comment_futures = []
     if "code_comment" in args.artifact_types:
