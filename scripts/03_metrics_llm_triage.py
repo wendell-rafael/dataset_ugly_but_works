@@ -65,9 +65,7 @@ LLM_KAPPA_DISCARD_THRESHOLD = 0.61  # Seção 5.6
 RANDOM_SEED = 42  # reprodutibilidade da amostragem (Seção 3.4)
 
 
-# =============================================================================
 # 1. Métricas de concordância (Seção 5.5): Cohen's Kappa e Gwet's AC1
-# =============================================================================
 
 def cohens_kappa(ratings_a: list, ratings_b: list) -> float:
     """Cohen's Kappa para dois anotadores (Landis & Koch, 1977).
@@ -231,9 +229,7 @@ def agreement_report(annotations: pd.DataFrame, item_col: str = "artifact_id") -
     return report
 
 
-# =============================================================================
 # 2. Amostragem estratificada para validação manual (Seção 5.2)
-# =============================================================================
 
 def stratified_sample(
     candidates: pd.DataFrame,
@@ -292,9 +288,7 @@ def stratified_sample(
     return sample.reset_index(drop=True)
 
 
-# =============================================================================
 # 3. Pré-triagem LLM (Seção 5.6)
-# =============================================================================
 
 LLM_TRIAGE_SYSTEM_PROMPT = """Você é um assistente de pesquisa em engenharia de software \
 empírica, auxiliando na pré-triagem de candidatos a "Ugly But It Works" (UBW): trechos de \
@@ -541,9 +535,8 @@ def run_llm_triage(
 
 
 def _candidate_key(row: dict) -> str:
-    """Chave estável de um candidato, usada pra saber (na retomada) quais
-    já foram classificados — mesmo espírito da chave usada na purga de
-    2026-07-06 (repo + tipo de artefato + id + expressão)."""
+    """Chave estável de um candidato (repo + tipo de artefato + id +
+    expressão), usada pra saber na retomada quais já foram classificados."""
     return "|".join(str(row.get(k, "")) for k in
                      ("repo_full_name", "artifact_type", "artifact_id", "matched_expression"))
 
@@ -559,12 +552,6 @@ def run_llm_triage_incremental(
     log_every: int = 10,
 ) -> pd.DataFrame:
     """Mesmo fluxo de run_llm_triage (Seção 5.6), mas tolerante a falhas.
-
-    Achado de 2026-07-08: os scripts 02 (coleta) e 04 (mineração) já
-    tinham gravação incremental (o 04 só depois de perder uma rodada
-    inteira de ~1h para uma interrupção externa do processo); o 03 nunca
-    teve — uma rodada de ~1000 candidatos já levou mais de 2h sem
-    nenhuma visibilidade de progresso nem possibilidade de retomada.
 
     Cada candidato classificado é imediatamente acrescentado a
     `out_path`. O próprio arquivo funciona como checkpoint: ao rodar de
@@ -646,9 +633,7 @@ def validate_llm_against_human(llm_labels: list[str], human_labels: list[bool]) 
     return kappa
 
 
-# =============================================================================
 # CLI
-# =============================================================================
 
 def cmd_sample(args: argparse.Namespace) -> None:
     candidates = pd.read_csv(args.candidates)
