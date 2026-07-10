@@ -1,62 +1,63 @@
 # UBW Mining Infrastructure
 
-Infraestrutura de software para mineração de artefatos do GitHub em escala,
-desenvolvida como suporte ao estudo empírico **UBW ("Ugly But It Works")** —
-uma pesquisa de mestrado (PPGCC/UFCG, orientação do Prof. João Arthur Brunet
-Monteiro) sobre comentários de "resignação funcional" (o desenvolvedor admite
-que uma solução é feia/hack, mas a mantém porque funciona), minerados em
-quatro tipos de artefato: comentário de código, mensagem de commit, corpo de
-issue e corpo de pull request.
+Infraestrutura de coleta usada no estudo empírico **UBW ("Ugly But It Works")**
+— pesquisa de mestrado (PPGCC/UFCG, orientação do Prof. João Arthur Brunet
+Monteiro) sobre comentários de "resignação funcional": o desenvolvedor admite
+que uma solução é feia ou é um hack, mas mantém porque funciona. O léxico é
+minerado em quatro tipos de artefato do GitHub — comentário de código,
+mensagem de commit, corpo de issue e corpo de pull request.
 
-Este README documenta a **infraestrutura de software** (coleta, resiliência,
-desempenho) para fins de registro. Para a metodologia científica completa
-(critérios de inclusão, léxico, RQs), ver [`plano.md`](plano.md); para
-resultados já obtidos, ver `RESULTADOS_*.md`.
+Este README cobre a infraestrutura de software (coleta, resiliência,
+desempenho). Para a metodologia científica (critérios de inclusão, léxico,
+RQs), ver [`plano.md`](plano.md); para resultados de cada rodada, ver os
+`RESULTADOS_*.md`.
 
-## Por que isso é mais do que "um script de scraping"
+## O que a infraestrutura resolve
 
-Minerar dezenas de milhares de repositórios do GitHub por múltiplos tipos de
-artefato esbarra em problemas de engenharia não triviais, que este projeto
-resolve de forma explícita e testada:
+Minerar dezenas de milhares de repositórios por quatro tipos de artefato
+esbarra em rate limit, timeout, e serviços de terceiro instáveis. O que foi
+implementado pra isso:
 
-- **Rate limiting da API do GitHub**: rotação de múltiplos tokens
-  (`ubw/github_api.py`) com round-robin por token, cada um mantendo seu
-  próprio orçamento de requisições.
-- **Otimização de throughput**: a Search API do GitHub aceita múltiplos
-  qualificadores `repo:` numa única query (semântica OR, verificada
-  empiricamente). A coleta agrupa repositórios em lotes por query
-  (respeitando o teto de 256 caracteres do parâmetro `q`), reduzindo a fase
-  de busca via API de ~5,8h para ~48min num corpus de referência de 784
-  repositórios.
-- **Tolerância a falhas / checkpoint incremental**: todas as etapas do
-  pipeline (triagem, coleta multi-artefato, pré-triagem por LLM, mineração
-  de padrões) gravam progresso em disco incrementalmente — o próprio
-  arquivo de saída funciona como checkpoint — e retomam automaticamente de
-  onde pararam em caso de interrupção (queda de processo, reinício de
-  máquina, limite de rate limit). Motivado por perdas reais de dados em
-  execuções de horas que foram interrompidas sem essa proteção.
-- **Robustez de rede / TLS**: dois workarounds documentados para problemas
-  reais do serviço de terceiros usado na triagem (SEART-GHS) — completar
-  uma cadeia de certificados incompleta via extensão AIA (como um
-  navegador faz), e uma fixação de impressão digital SHA-256 para tolerar
-  um certificado expirado sem desabilitar a verificação TLS de forma
-  genérica (`ubw/tls_fix.py`).
-- **Canonicalização de identidade de repositório**: repositórios renomeados
-  entre a indexação do SEART-GHS e a coleta quebram o qualificador `repo:`
-  da Search API (HTTP 422) e podem duplicar entradas no corpus;
-  `scripts/05_canonicalize_repos.py` resolve o nome atual via redirect da
-  REST API antes da coleta.
-- **Filtros de precisão** aprendidos a partir de falsos positivos reais
-  encontrados durante a mineração: detecção de código vendorizado (por
-  caminho e por nome de arquivo), exclusão de artefatos de bots,
-  correspondência de frase por linha (evita que uma frase do léxico "cole"
-  através de uma quebra de linha ou item de lista), e exigência de
-  correspondência textual normalizada (a Search API do GitHub faz
-  stemming e pode retornar falsos positivos).
-- **Identidade de autor com pseudonimização**: cada registro guarda os
-  identificadores brutos disponíveis do autor de introdução (nome/login/
-  e-mail, conforme o canal) mais um hash SHA-256 derivado, para permitir
-  contato em pesquisa futura sem expor os dados brutos na publicação.
+Rotação de múltiplos tokens do GitHub (`ubw/github_api.py`), round-robin,
+cada token com seu próprio estado de rate limit — multiplica o throughput
+sem violar o limite de nenhum token individual.
+
+A Search API aceita múltiplos qualificadores `repo:` numa mesma query
+(semântica OR, verificada empiricamente). A coleta agrupa repositórios em
+lotes por query, respeitando o teto de 256 caracteres do parâmetro `q`, o
+que reduziu a fase de busca via API de ~5,8h para ~48min num corpus de 784
+repositórios. Quando uma expressão comum estoura o teto de 1000 resultados
+da Search API dentro de um lote, a coleta detecta e refaz a busca por
+repositório individual pra não perder recall.
+
+Checkpoint incremental em todas as etapas longas (triagem, coleta,
+pré-triagem por LLM, mineração de padrões): o próprio arquivo de saída
+funciona como checkpoint, e uma interrupção (crash, reinício de máquina,
+rate limit) não derruba o progresso já feito. Isso não era assim desde o
+início — o projeto já perdeu execuções inteiras de horas por gravar
+resultado só no final, ver `CHANGELOG.md`.
+
+O serviço de triagem (SEART-GHS) tem dois problemas reais de TLS do lado
+deles: não envia o certificado intermediário no handshake, e o certificado
+expirou em julho/2026. `ubw/tls_fix.py` completa a cadeia via AIA (como um
+navegador faz) e usa fixação de impressão digital SHA-256 pra tolerar o
+certificado vencido sem desabilitar verificação TLS de forma genérica.
+
+Repositórios renomeados entre a indexação do SEART-GHS e a coleta quebram
+o qualificador `repo:` da Search API (HTTP 422) e podem duplicar entradas
+no corpus. `scripts/05_canonicalize_repos.py` resolve o nome atual via
+redirect da REST API antes de coletar.
+
+Filtros de precisão vieram de falsos positivos reais encontrados na
+mineração: código vendorizado (por caminho e por nome de arquivo), autores
+bot, frase do léxico "colando" através de quebra de linha ou item de
+lista, e correspondência textual normalizada (a Search API faz stemming e
+retorna falso positivo).
+
+Cada registro guarda os identificadores brutos disponíveis do autor de
+introdução (nome/login/e-mail, conforme o canal) mais um hash SHA-256 —
+pra permitir contato numa survey futura sem expor o dado bruto quando o
+dataset for publicado.
 
 ## Estrutura do repositório
 
@@ -70,9 +71,9 @@ ubw/                        pacote de suporte compartilhado por todos os scripts
 └── envutil.py                   utilitário de carregamento de .env
 
 scripts/
-├── 01_screening_seart.py      Fase 1 — triagem de repositórios (SEART-GHS)
+├── 01_screening_seart.py      triagem de repositórios (SEART-GHS)
 ├── 05_canonicalize_repos.py   canonicalização de nomes (pré-passo da coleta)
-├── 02_collect_multiartifact.py Fase 1 — coleta multi-artefato do léxico
+├── 02_collect_multiartifact.py coleta multi-artefato do léxico
 ├── 03_metrics_llm_triage.py    amostragem, pré-triagem LLM, métricas de concordância
 ├── 04_pattern_mining.py         mineração exploratória de novas expressões
 └── generate_report_figures.py   geração dos gráficos usados nos relatórios
@@ -84,8 +85,8 @@ RESULTADOS_*.md              relatórios de cada rodada de coleta
 
 ## Instalação
 
-Requer Python 3.10+ (testado nesta máquina com `python3.10` especificamente —
-ver nota de ambiente no `CHANGELOG.md`).
+Requer Python 3.10+ (nesta máquina, `python3` aponta pra 3.12 sem pandas —
+usar `python3.10` explicitamente; ver `CHANGELOG.md`).
 
 ```bash
 pip install -r requirements.txt
@@ -113,28 +114,25 @@ python 03_metrics_llm_triage.py llm-triage \
     --candidates ../data/ubw_collected_full.csv --out ../data/llm_triage_results.csv
 ```
 
-Todos os scripts com etapas longas (1, 2, 3, 4) suportam interrupção e
-retomada — basta rodar o mesmo comando de novo. Nenhum precisa de flag
-especial para retomar; a exceção é `01_screening_seart.py`, que aceita
-`--resume-from-page N` para retomar manualmente de uma página conhecida.
+Todos os scripts de etapa longa (1 a 4) suportam interrupção e retomada —
+basta rodar o mesmo comando de novo, sem flag especial. A exceção é
+`01_screening_seart.py`, que aceita `--resume-from-page N` pra retomar
+manualmente de uma página conhecida.
 
-## Limitações conhecidas (débito técnico, honesto)
+## Limitações conhecidas
 
-- Sem suíte de testes automatizada — a validação de correções foi feita via
-  smoke tests manuais (scripts ad-hoc), não via CI/pytest. Ver
-  `CHANGELOG.md` para o histórico de bugs pegos dessa forma.
-- Acoplado às particularidades desta pesquisa (schema do plano, léxico
-  fechado, endpoint específico do SEART-GHS) — não é uma biblioteca
-  genérica de mineração de GitHub, embora `ubw/github_api.py` e o padrão de
-  checkpoint incremental sejam reutilizáveis em outros contextos.
-- O workaround de fixação de certificado TLS (`ubw/tls_fix.py`) é
-  temporário por definição — deve ser removido do uso normal assim que o
-  SEART-GHS renovar o certificado deles.
+- Sem suíte de testes automatizada. A validação de correções foi feita com
+  smoke tests manuais, não CI/pytest — o histórico de bugs pegos assim está
+  no `CHANGELOG.md`.
+- Acoplado a esta pesquisa (schema do plano, léxico fechado, endpoint do
+  SEART-GHS) — não é uma biblioteca genérica, embora `ubw/github_api.py` e
+  o padrão de checkpoint incremental sirvam em outros contextos.
+- O workaround de certificado TLS (`ubw/tls_fix.py`) é temporário: remover
+  do uso normal assim que o SEART-GHS renovar o certificado deles.
 - Caminhos relativos (`../data/...`) assumem execução a partir de `scripts/`.
 
 ## Autoria e citação
 
-Desenvolvido por Wendell Rafael Oliveira Nascimento (PPGCC/UFCG), sob
-orientação do Prof. João Arthur Brunet Monteiro, como infraestrutura de
-suporte à dissertação de mestrado sobre o fenômeno UBW. Licenciado sob MIT
-(ver `LICENSE`).
+Desenvolvido por Wendell Nascimento (PPGCC/UFCG), sob orientação do Prof.
+João Arthur Brunet Monteiro, como infraestrutura de suporte à dissertação
+de mestrado sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
