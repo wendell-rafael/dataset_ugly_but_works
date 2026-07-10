@@ -1,0 +1,27 @@
+# Segredos — NUNCA versionar (contém tokens reais do GitHub, chaves de API)
+.env
+.env.*
+!.env.example
+
+# Dados coletados, clones locais e caches — grandes e/ou específicos da
+# execução; não fazem parte do código-fonte da infraestrutura.
+data/
+*.csv
+*.jsonl
+
+# Config local do Claude Code (permissões específicas da máquina).
+# launch.json é compartilhável e fica versionado; settings.local.json não.
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# SO / editor
+.DS_Store
+*.swp
