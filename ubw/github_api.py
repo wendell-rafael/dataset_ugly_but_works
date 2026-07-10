@@ -93,12 +93,8 @@ class GitHubClient:
     def __init__(self, token: Optional[str] = None, tokens: Optional[list[str]] = None,
                  session: Optional[requests.Session] = None):
         if tokens is None:
-            # GITHUB_TOKENS (múltiplos) tem prioridade sobre GITHUB_TOKEN (único) —
-            # consistente com o comportamento documentado no .env e nos scripts
-            # 02/05, que resolvem essa mesma prioridade antes de instanciar o
-            # cliente. Corrigido em 2026-07-06: a ordem estava invertida aqui,
-            # fazendo `GitHubClient()` sem argumentos ignorar GITHUB_TOKENS
-            # sempre que GITHUB_TOKEN também estivesse definido.
+            # GITHUB_TOKENS (múltiplos) tem prioridade sobre GITHUB_TOKEN (único),
+            # consistente com os scripts 02/05.
             raw = token or os.environ.get("GITHUB_TOKENS") or os.environ.get("GITHUB_TOKEN")
             if not raw:
                 raise GitHubAPIError(
@@ -212,13 +208,9 @@ class GitHubClient:
                     logger.warning("Rate limit primário esgotado. Aguardando %.0fs.", wait_seconds)
                     time.sleep(wait_seconds)
                     continue
-                # Fix 2026-07-09: 403 sem Retry-After e sem remaining==0 pode
-                # ainda ser o rate limit SECUNDÁRIO (abuse detection) do
-                # GitHub, que às vezes omite o header Retry-After. Os docs do
-                # GitHub dizem para aguardar pelo menos 60s nesse caso antes
-                # de tentar de novo. Sem essa checagem, um 403 transitório de
-                # abuse detection matava a coleta inteira como se fosse
-                # permissão negada.
+                # 403 sem Retry-After e sem remaining==0 pode ainda ser o
+                # rate limit SECUNDÁRIO (abuse detection), que às vezes omite
+                # o header — os docs do GitHub pedem esperar >= 60s nesse caso.
                 body_text = ""
                 try:
                     body_text = resp.text or ""

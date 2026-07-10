@@ -118,39 +118,17 @@ def get_verify_bundle_for_host(host: str) -> str:
     return str(cache_path)
 
 
-# =============================================================================
 # Fixação de impressão digital (fingerprint pinning) para certificado
-# EXPIRADO — caso diferente do workaround acima (que é sobre cadeia
-# incompleta, não sobre expiração).
-#
-# Achado de 2026-07-08: o certificado de seart-ghs.si.usi.ch venceu em
-# 2026-07-07 (confirmado via `openssl s_client` e pelo próprio aviso do
-# navegador — não é relógio local incorreto). Simplesmente desabilitar a
-# verificação TLS (`verify=False`) aceitaria QUALQUER certificado de
-# QUALQUER servidor nessa conexão, não só o certificado real deles vencido
-# — abre a porta pra um ataque man-in-the-middle de verdade, o que é sério
-# demais pra um script que alimenta o corpus de um estudo de pesquisa.
-#
-# Em vez disso: fixamos a impressão digital SHA-256 exata do certificado
-# real deles (capturada manualmente enquanto ainda podíamos confiar nele
-# por outros meios) e só prosseguimos se o certificado apresentado bater
-# EXATAMENTE com essa impressão digital, ignorando apenas a checagem de
-# data. Um atacante man-in-the-middle não teria a chave privada
-# correspondente a essa impressão digital específica, então continua
-# sendo detectado; só a expiração é tolerada.
-#
-# REMOVER este bloco assim que o SEART-GHS renovar o certificado — nesse
-# ponto a verificação padrão (get_verify_bundle_for_host) volta a
-# funcionar sozinha e este workaround fica obsoleto.
-# =============================================================================
+# EXPIRADO — caso diferente do workaround acima (cadeia incompleta, não
+# expiração). Desabilitar `verify=False` puro aceitaria QUALQUER
+# certificado nessa conexão; em vez disso, só prosseguimos se o certificado
+# apresentado bater EXATAMENTE com a impressão digital SHA-256 conhecida do
+# domínio (capturada manualmente via `openssl s_client`), o que continua
+# detectando um MITM real. REMOVER assim que o SEART-GHS renovar o
+# certificado deles — ver CHANGELOG.md.
 
 import hashlib  # noqa: E402
 
-# Impressão digital SHA-256 do certificado de seart-ghs.si.usi.ch,
-# capturada em 2026-07-08 via `openssl s_client -connect
-# seart-ghs.si.usi.ch:443 | openssl x509 -noout -fingerprint -sha256`.
-# subject=CN=seart-ghs.si.usi.ch, issuer=Let's Encrypt R12 — confirmado
-# como o certificado real do domínio, só com a data vencida.
 KNOWN_EXPIRED_CERT_FINGERPRINTS: dict[str, str] = {
     "seart-ghs.si.usi.ch": "5D80B5CB53226C7858DA7A661303B753CD525876135"
                             "4E42C340549B046B7460F".replace(" ", ""),
