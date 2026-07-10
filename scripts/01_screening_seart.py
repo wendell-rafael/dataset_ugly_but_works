@@ -204,29 +204,22 @@ def screen_repositories(
     out_path: Optional[Path] = None,
     resume_from_page: int = 0,
 ) -> list[dict]:
-    """Coleta paginada com checkpoint incremental.
-
-    Achado de 2026-07-08: a versão anterior só escrevia o CSV/arquivo bruto
-    no final do loop inteiro. Uma rodada sem `--max-repos` contra o
-    corpus completo do SEART-GHS leva horas e foi interrompida no meio sem
-    deixar nenhum resultado gravado. Agora, se `out_path` for informado, o
-    CSV é escrito (append + flush) a cada página, e o arquivo bruto vira
-    JSONL (uma página por linha, também append + flush) em vez de um único
-    JSON montado no final. `resume_from_page` permite retomar manualmente
-    de uma página conhecida (via log) sem repetir as anteriores — a query
-    é stateless por página, então isso é seguro desde que os critérios não
-    mudem entre execuções.
+    """Coleta paginada com checkpoint incremental: se `out_path` for
+    informado, o CSV é escrito (append + flush) a cada página, e o arquivo
+    bruto vira JSONL (uma página por linha) em vez de um único JSON montado
+    no final — uma rodada sem `--max-repos` pode levar horas, e sem isso
+    uma interrupção no meio perde tudo. `resume_from_page` permite retomar
+    manualmente de uma página conhecida; a query é stateless por página,
+    seguro desde que os critérios não mudem entre execuções.
     """
     session = requests.Session()
     session.headers.update({"Accept": "application/json", "User-Agent": "ubw-dataset-collector/1.0"})
     host = urlparse(base_url).hostname
     if allow_expired_cert_pin:
-        # Achado de 2026-07-08: o certificado de seart-ghs.si.usi.ch venceu
-        # (não é um problema de cadeia incompleta, que get_verify_bundle_for_host
-        # já cobre). Decisão explícita do usuário: usar fixação de impressão
-        # digital (ubw/tls_fix.verify_pinned_fingerprint) em vez de desabilitar
-        # TLS por completo — ver CHANGELOG em ubw/tls_fix.py. REMOVER esta
-        # flag do uso normal assim que o certificado deles for renovado.
+        # Certificado de seart-ghs.si.usi.ch venceu (não é cadeia incompleta,
+        # que get_verify_bundle_for_host já cobre) — usa fixação de
+        # impressão digital em vez de desabilitar TLS por completo. REMOVER
+        # esta flag do uso normal assim que o certificado for renovado.
         from ubw.tls_fix import get_session_trusting_pinned_cert
         session = get_session_trusting_pinned_cert(host)
         session.headers.update({"Accept": "application/json", "User-Agent": "ubw-dataset-collector/1.0"})
@@ -359,13 +352,10 @@ def parse_args() -> argparse.Namespace:
 def _count_csv_data_rows(csv_path: Path) -> int:
     """Conta as linhas de dados (exclui o cabeçalho) de um CSV no disco.
 
-    Fix 2026-07-09 (#3): usado para calcular `total_repositories` do
-    meta.json a partir do CSV de saída real, em vez de `len(rows)`. Como
-    `screen_repositories()` grava incrementalmente e, em uma retomada via
-    `--resume-from-page`, retorna apenas as linhas coletadas NESTA
-    invocação (as de execuções anteriores já estão no CSV mas não em
-    `rows`), usar `len(rows)` subestimava o total em runs retomados.
-    Retorna 0 se o arquivo não existir ou estiver vazio.
+    Usado para `total_repositories` no meta.json: numa retomada via
+    `--resume-from-page`, `screen_repositories()` retorna só as linhas
+    coletadas nesta invocação, então `len(rows)` subestimaria o total real
+    do CSV. Retorna 0 se o arquivo não existir ou estiver vazio.
     """
     if not csv_path.exists():
         return 0
@@ -429,8 +419,7 @@ def main() -> None:
                     "require_pulls": not args.no_require_pulls,
                     "exclude_forks": not args.include_forks,
                 },
-                # Fix 2026-07-09 (#3): total real do CSV em disco, não
-                # len(rows) — ver docstring de _count_csv_data_rows.
+                # Total real do CSV em disco, não len(rows) — ver docstring de _count_csv_data_rows.
                 "total_repositories": _count_csv_data_rows(out_path),
             },
             f, ensure_ascii=False, indent=2,
