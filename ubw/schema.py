@@ -1,9 +1,8 @@
 """Schema de coleta (Tabela 3.5 do plano) e critérios de inclusão (Seção 2).
 
-Fonte única de verdade para nomes/ordem de colunas do dataset coletado.
-Os três scripts (`01_screening_seart.py`, `02_collect_multiartifact.py`,
-`03_metrics_llm_triage.py`) importam daqui para garantir que o CSV
-intermediário e o CSV final tenham exatamente o mesmo schema.
+Fonte única de verdade para nomes/ordem de colunas do dataset — os três
+scripts de coleta importam daqui para garantir que os CSVs tenham
+exatamente o mesmo schema.
 """
 from __future__ import annotations
 
@@ -11,10 +10,7 @@ import hashlib
 from dataclasses import asdict, dataclass, fields
 from typing import Optional
 
-# ---------------------------------------------------------------------------
 # Critérios de inclusão de repositórios (Seção 2.2)
-# ---------------------------------------------------------------------------
-
 MIN_STARS = 100
 MIN_COMMITS = 100
 MIN_CONTRIBUTORS = 3
@@ -23,30 +19,17 @@ REQUIRE_ISSUES_ENABLED = True
 REQUIRE_PULLS_ENABLED = True
 EXCLUDE_FORKS = True
 
-# Threshold de inclusão no corpus final (Seção 2.4). Aplicado só ao
-# subconjunto de sobrevivência (RQ2); RQ1 usa o corpus inteiro.
-#
-# 2026-07-01: reduzido de 5 para 3 (o fallback já previsto na Seção 2.4),
-# por decisão do orientador. Gatilho: nas duas rodadas do piloto, o
-# threshold de 5 excluiu 83% dos repositórios com pelo menos 1 ocorrência
-# — bem acima dos 40% que o plano definia como limite para acionar a
-# redução. Ver RESULTADOS_PILOTO.md, Seção 9.
+# Threshold de inclusão no subconjunto de RQ2 (Seção 2.4); RQ1 usa o corpus
+# inteiro. Reduzido de 5 para 3 (fallback previsto na Seção 2.4) — ver
+# RESULTADOS_PILOTO.md Seção 9 para o histórico da decisão.
 MIN_OCCURRENCES_FOR_RQ2 = 3
-# Valor anterior, mantido só como referência histórica (não é mais usado
-# como fallback automático, já que o threshold ativo já é o valor mínimo
-# previsto pelo plano).
 PREVIOUS_MIN_OCCURRENCES_FOR_RQ2 = 5
 THRESHOLD_EXCLUSION_ALERT_RATIO = 0.40
 
-# ---------------------------------------------------------------------------
 # Tipos de artefato (Tabela 3.5 / Li et al., 2023)
-# ---------------------------------------------------------------------------
-
 ARTIFACT_TYPES = ("code_comment", "commit_message", "issue_body", "pr_body")
 
-# ---------------------------------------------------------------------------
 # Schema de coleta (Tabela 3.5)
-# ---------------------------------------------------------------------------
 
 COLLECTION_SCHEMA_COLUMNS: list[str] = [
     "repo_full_name",
@@ -71,43 +54,22 @@ COLLECTION_SCHEMA_COLUMNS: list[str] = [
     "author_hash",
 ]
 
-# ---------------------------------------------------------------------------
-# Identidade do autor da INTRODUÇÃO do registro (Seção 2026-07-08, decisão do
-# usuário: só introdução, não remoção — remoção não é rastreada por ora).
+# Identidade do autor da INTRODUÇÃO do registro — só introdução, remoção não
+# é rastreada. Dado bruto (nome/login/e-mail) fica no dataset de trabalho
+# para permitir contato numa survey futura; `author_hash` (SHA-256 sem salt,
+# pseudonimização, não anonimização formal — reidentificável com uma lista
+# de candidatos) é o campo a usar na versão publicada, removendo os brutos.
 #
-# Motivação: o pesquisador pretende contatar autores para uma survey futura,
-# então o dado bruto (nome/login/e-mail) é mantido no dataset de trabalho.
-# `author_hash` é um pseudônimo estável (SHA-256, sem salt) do identificador
-# mais forte disponível — pensado para a VERSÃO COMPARTILHADA/PUBLICADA do
-# dataset, onde os campos brutos devem ser removidos antes de publicar.
-#
-# LIMITAÇÃO reconhecida: hash sem salt é pseudonimização, não anonimização
-# de verdade — qualquer pessoa com uma lista de e-mails/logins candidatos
-# pode testar cada um contra o hash e reidentificar. Suficiente para reduzir
-# exposição casual (o hash não é reversível por inspeção), mas não é uma
-# garantia formal de privacidade. Se o dataset for publicado, os campos
-# `author_name`/`author_login`/`author_email` devem ser removidos, mantendo
-# só `author_hash`.
-#
-# Disponibilidade por tipo de artefato:
-#   - commit_message: author_name e author_email vêm do commit em si
-#     (sempre presentes, é metadado do git); author_login só existe se o
-#     e-mail do commit estiver vinculado a uma conta GitHub (pode ser None).
-#   - issue_body / pr_body: só author_login (a Search API não expõe e-mail;
-#     pegar isso exigiria uma chamada extra por usuário a /users/{login},
-#     e mesmo assim só funciona para quem tornou o e-mail público).
-#   - code_comment: author_name e author_email do commit que introduziu o
-#     comentário (git log --format, sem custo de API extra); sem
-#     author_login (git não sabe o usuário GitHub do autor).
-# ---------------------------------------------------------------------------
+# Disponibilidade por artefato: commit_message tem name+email sempre (vêm do
+# commit) e login se a conta GitHub estiver vinculada; issue_body/pr_body só
+# têm login (Search API não expõe e-mail); code_comment tem name+email do
+# commit de introdução, sem login (git não sabe o usuário GitHub do autor).
 
 
 def compute_author_hash(name: Optional[str], login: Optional[str], email: Optional[str]) -> Optional[str]:
-    """Pseudônimo estável do autor: SHA-256 do identificador mais forte
-    disponível, nessa ordem de preferência (e-mail > login > nome), pois
-    e-mail e login tendem a ser mais estáveis/únicos que nome de exibição.
-    Normaliza case/espaço nas bordas para o mesmo autor sempre gerar o
-    mesmo hash. Retorna None se não houver nenhum identificador.
+    """SHA-256 do identificador mais forte disponível (e-mail > login >
+    nome). Normaliza case/espaço para o mesmo autor gerar sempre o mesmo
+    hash; retorna None se não houver identificador.
     """
     identifier = (email or login or name or "").strip().lower()
     if not identifier:
@@ -142,7 +104,6 @@ class UBWRecord:
 
     def to_row(self) -> dict:
         row = asdict(self)
-        # Garante ordem e presença de todas as colunas do schema.
         return {col: row.get(col) for col in COLLECTION_SCHEMA_COLUMNS}
 
 
@@ -155,9 +116,7 @@ assert [f.name for f in fields(UBWRecord)] == COLLECTION_SCHEMA_COLUMNS, (
 )
 
 
-# ---------------------------------------------------------------------------
 # Schema do CSV de repositórios triados (saída do script 01)
-# ---------------------------------------------------------------------------
 
 REPOS_TO_MINE_COLUMNS: list[str] = [
     "repo_full_name",
