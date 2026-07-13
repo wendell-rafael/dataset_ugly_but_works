@@ -23,8 +23,10 @@ from __future__ import annotations
 import itertools
 import logging
 import os
+import threading
 import time
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Iterator, Optional
 
 import requests
@@ -47,6 +49,76 @@ BACKOFF_CAP_SECONDS = 30.0
 
 class GitHubAPIError(RuntimeError):
     """Erro não recuperável (após esgotar retries) na API do GitHub."""
+
+
+class GitHubTransientError(GitHubAPIError):
+    """Subclasse específica para falha por esgotamento de retries (rede
+    instável ou servidor fora do ar) — distinta de erros permanentes de uma
+    request específica (403 de permissão, 422 de query malformada). Só
+    falhas desse tipo contam pro CircuitBreaker; um 422 não significa que o
+    GitHub está fora do ar.
+    """
+
+
+class CircuitState(Enum):
+    CLOSED = auto()
+    OPEN = auto()
+    HALF_OPEN = auto()
+
+
+class CircuitBreaker:
+    """Evita bater retry+backoff completo (até MAX_RETRIES) repetidamente
+    contra um serviço que já demonstrou estar fora do ar. Após
+    `failure_threshold` falhas consecutivas, abre o circuito e falha
+    rápido por `cooldown_seconds` antes de deixar uma tentativa de teste
+    passar (half-open); se essa tentativa falhar também, dobra o cooldown
+    (até `cooldown_cap_seconds`). Uma chamada bem-sucedida fecha o
+    circuito e reseta o cooldown. Thread-safe.
+    """
+
+    def __init__(self, failure_threshold: int = 3, cooldown_seconds: float = 60.0,
+                 cooldown_cap_seconds: float = 600.0):
+        self.failure_threshold = failure_threshold
+        self.cooldown_seconds = cooldown_seconds
+        self.cooldown_cap_seconds = cooldown_cap_seconds
+        self._lock = threading.Lock()
+        self._state = CircuitState.CLOSED
+        self._consecutive_failures = 0
+        self._opened_at = 0.0
+        self._current_cooldown = cooldown_seconds
+
+    def before_call(self) -> None:
+        with self._lock:
+            if self._state != CircuitState.OPEN:
+                return
+            elapsed = time.monotonic() - self._opened_at
+            if elapsed < self._current_cooldown:
+                raise GitHubAPIError(
+                    f"Circuit breaker aberto (serviço aparentemente fora do ar) — "
+                    f"aguardando mais {self._current_cooldown - elapsed:.0f}s antes de tentar de novo."
+                )
+            self._state = CircuitState.HALF_OPEN
+
+    def record_success(self) -> None:
+        with self._lock:
+            self._consecutive_failures = 0
+            self._current_cooldown = self.cooldown_seconds
+            self._state = CircuitState.CLOSED
+
+    def record_failure(self) -> None:
+        with self._lock:
+            self._consecutive_failures += 1
+            if self._state == CircuitState.HALF_OPEN:
+                self._current_cooldown = min(self._current_cooldown * 2, self.cooldown_cap_seconds)
+                self._state = CircuitState.OPEN
+                self._opened_at = time.monotonic()
+                logger.error("Circuit breaker: tentativa de teste falhou de novo. Reabrindo por %.0fs.",
+                             self._current_cooldown)
+            elif self._consecutive_failures >= self.failure_threshold:
+                self._state = CircuitState.OPEN
+                self._opened_at = time.monotonic()
+                logger.error("Circuit breaker: %d falhas consecutivas. Abrindo por %.0fs.",
+                             self._consecutive_failures, self._current_cooldown)
 
 
 @dataclass
@@ -120,6 +192,8 @@ class GitHubClient:
             logger.info("GitHubClient com %d tokens em rotação (throughput de busca efetivo: ~%d req/min).",
                         len(self._slots), 30 * len(self._slots))
 
+        self._breaker = CircuitBreaker()
+
     # -- infraestrutura de baixo nível -----------------------------------
 
     def _throttle_search(self, slot: _TokenSlot) -> None:
@@ -153,7 +227,8 @@ class GitHubClient:
         is_search: bool = False,
         **kwargs,
     ) -> requests.Response:
-        """Executa uma requisição HTTP com retry, backoff e rate limiting.
+        """Executa uma requisição HTTP com retry, backoff, rate limiting e
+        circuit breaker.
 
         `path_or_url` pode ser um path relativo (ex: "/repos/o/n") ou uma URL
         absoluta (usada ao seguir o header `Link` de paginação). Cada
@@ -161,7 +236,28 @@ class GitHubClient:
         módulo) — múltiplas chamadas concorrentes (ex: threads de
         code_comment não usam este cliente, mas chamadas paralelas
         hipotéticas de busca) naturalmente se distribuem entre tokens.
+
+        Se o circuito estiver aberto (falhas recentes demais), falha rápido
+        sem sequer tentar — ver CircuitBreaker.
         """
+        self._breaker.before_call()
+        try:
+            resp = self._request_with_retry(method, path_or_url, params, is_search, **kwargs)
+        except GitHubTransientError:
+            self._breaker.record_failure()
+            raise
+        else:
+            self._breaker.record_success()
+            return resp
+
+    def _request_with_retry(
+        self,
+        method: str,
+        path_or_url: str,
+        params: Optional[dict],
+        is_search: bool,
+        **kwargs,
+    ) -> requests.Response:
         url = path_or_url if path_or_url.startswith("http") else f"{GITHUB_API_ROOT}{path_or_url}"
         slot = next(self._search_cycle if is_search else self._core_cycle)
 
@@ -242,7 +338,7 @@ class GitHubClient:
 
             raise GitHubAPIError(f"HTTP {resp.status_code} inesperado em {url}: {resp.text[:300]}")
 
-        raise GitHubAPIError(f"Esgotadas {MAX_RETRIES} tentativas para {url}")
+        raise GitHubTransientError(f"Esgotadas {MAX_RETRIES} tentativas para {url}")
 
     def paginate(
         self,
