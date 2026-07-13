@@ -37,6 +37,13 @@ rate limit) não derruba o progresso já feito. Isso não era assim desde o
 início — o projeto já perdeu execuções inteiras de horas por gravar
 resultado só no final, ver `CHANGELOG.md`.
 
+Um circuit breaker no cliente HTTP (`ubw/github_api.py`) detecta outage
+sustentado do GitHub e falha rápido em vez de insistir em retry+backoff
+completo a cada chamada. Uma Dead Letter Queue (`ubw/dlq.py`) registra
+repositórios que falham repetidamente em `code_comment` (clone impossível,
+repo apagado) e para de retentá-los depois de N tentativas, em vez de
+ficarem "pendentes pra sempre" a cada retomada.
+
 O serviço de triagem (SEART-GHS) tem dois problemas reais de TLS do lado
 deles: não envia o certificado intermediário no handshake, e o certificado
 expirou em julho/2026. `ubw/tls_fix.py` completa a cadeia via AIA (como um
@@ -66,8 +73,9 @@ ubw/                        pacote de suporte compartilhado por todos os scripts
 ├── schema.py                schema de coleta (colunas, critérios de inclusão, hash de autor)
 ├── lexicon.py                léxico fechado de expressões + filtros de precisão
 ├── patterns.py                padrões estruturais exploratórios (regex)
-├── github_api.py              cliente HTTP com rotação de tokens e rate limiting
-├── tls_fix.py                  workarounds de TLS para o SEART-GHS
+├── github_api.py              cliente HTTP com rotação de tokens, rate limiting e circuit breaker
+├── dlq.py                      Dead Letter Queue para falhas persistentes de repositório
+├── tls_fix.py                    workarounds de TLS para o SEART-GHS
 └── envutil.py                   utilitário de carregamento de .env
 
 scripts/

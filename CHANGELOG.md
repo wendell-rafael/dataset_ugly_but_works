@@ -6,6 +6,29 @@ refletem quando o problema foi identificado e corrigido, não necessariamente
 commits formais (o projeto ainda não tinha controle de versão até este
 registro).
 
+## 2026-07-13 — circuit breaker, Dead Letter Queue e barra de progresso
+
+Preparação pra rodar a coleta em escala bem maior que o `round_800`, com
+três mecanismos de resiliência novos:
+
+- **Circuit breaker** (`ubw/github_api.py`): `GitHubClient` para de bater
+  retry+backoff completo (até `MAX_RETRIES`) contra um serviço fora do ar.
+  Após falhas consecutivas por esgotamento de retries (`GitHubTransientError`,
+  distinta de erros permanentes como 403/422), abre o circuito e falha
+  rápido por um cooldown que dobra a cada nova falha em half-open, até um
+  teto. Testado com host inexistente: 3ª chamada falhou em <1ms sem tentar
+  rede.
+- **Dead Letter Queue** (`ubw/dlq.py`, novo módulo): antes, um repositório
+  com falha permanente em `code_comment` (clone impossível, repo apagado)
+  ficava "pendente pra sempre" e era retentado do zero em toda retomada.
+  Agora cada falha é registrada num CSV com contagem de tentativas; após
+  `--dlq-max-attempts` (padrão 3), o item é pulado sem nova tentativa.
+  Persiste entre execuções (o CSV é o próprio estado).
+- **Barra de progresso com ETA** (`scripts/02_collect_multiartifact.py`,
+  via `tqdm`): uma barra pro loop sequencial da API (repo × tipo de
+  artefato) e outra pros workers de `code_comment`. Logs passam a sair via
+  `tqdm.write()` (handler customizado) pra não quebrar a barra no meio.
+
 ## 2026-07-09 — revisão de robustez de API (3 correções pós-review)
 
 Achados de um code review focado em boas práticas de mineração/limitações de
