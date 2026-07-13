@@ -48,15 +48,30 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterable, Optional
 
+from tqdm import tqdm
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from ubw import lexicon, schema  # noqa: E402
+from ubw.dlq import DeadLetterQueue  # noqa: E402
 from ubw.envutil import load_dotenv  # noqa: E402
 from ubw.github_api import GitHubAPIError, GitHubClient  # noqa: E402
 from ubw.schema import UBWRecord  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+class _TqdmLoggingHandler(logging.Handler):
+    """Log via tqdm.write() em vez de print/stderr direto — sem isso, cada
+    linha de log quebra a barra de progresso no meio."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            tqdm.write(self.format(record))
+        except Exception:
+            self.handleError(record)
+
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s",
+                     handlers=[_TqdmLoggingHandler()])
 logger = logging.getLogger("ubw.collect")
 
 # Cada expressão do léxico dispara sua própria chamada `git log -S`, então
@@ -902,21 +917,29 @@ def enrich_repo_age(records: list[UBWRecord], repo_age_days: Optional[int]) -> N
 # Paralelização de code_comment (ver main())
 
 def process_repo_code_comment(
-    repo: dict, clone_root: Path, keep_clones: bool, appender: CSVAppender, state: CheckpointState
+    repo: dict, clone_root: Path, keep_clones: bool, appender: CSVAppender, state: CheckpointState,
+    dlq: DeadLetterQueue,
 ) -> None:
     """Executado em worker thread do pool: clona e coleta code_comment de
     UM repositório. Independente entre repositórios (cada um usa seu
     próprio diretório de clone), então é seguro rodar vários em paralelo.
     """
     repo_full_name = repo["repo_full_name"]
+    dlq_key = f"{repo_full_name}::code_comment"
+    if dlq.should_skip(dlq_key):
+        logger.warning("  [code_comment] %s: pulado (DLQ, falhou repetidamente antes)", repo_full_name)
+        return
+
     clone_url = repo.get("clone_url") or f"https://github.com/{repo_full_name}.git"
     repo_dir = clone_root / repo_full_name.replace("/", "__")
 
     cloned_ok = clone_repo(clone_url, repo_dir)
     if not cloned_ok:
+        attempt = dlq.record_failure(dlq_key, "clone falhou")
         logger.error(
-            "Pulando code_comment de %s nesta execução (clone falhou); "
-            "será tentado novamente na próxima retomada.", repo_full_name,
+            "Pulando code_comment de %s nesta execução (clone falhou, tentativa %d); "
+            "será tentado de novo na próxima retomada, até esgotar o limite da DLQ.",
+            repo_full_name, attempt,
         )
         return
 
@@ -931,6 +954,10 @@ def process_repo_code_comment(
         enrich_repo_age(records, repo_age_days)
         n = appender.write(records)
         logger.info("  [code_comment] %s: %d registros", repo_full_name, n)
+    except Exception as exc:
+        attempt = dlq.record_failure(dlq_key, str(exc))
+        logger.error("Falha ao coletar code_comment de %s (tentativa %d): %s", repo_full_name, attempt, exc)
+        return
     finally:
         if not keep_clones:
             shutil.rmtree(repo_dir, ignore_errors=True)
@@ -1028,6 +1055,10 @@ def parse_args() -> argparse.Namespace:
              "throughput (30 req/min) imposto pelo servidor; use --github-tokens para multiplicar "
              "esse teto em vez de paralelismo (que não furaria o limite de um único token).",
     )
+    parser.add_argument("--dlq-file", default="../data/dlq.csv",
+                         help="Dead Letter Queue: repos que falharam repetidamente em code_comment.")
+    parser.add_argument("--dlq-max-attempts", type=int, default=3,
+                         help="Nº de falhas antes de um (repo, code_comment) ser permanentemente pulado.")
     return parser.parse_args()
 
 
@@ -1042,6 +1073,7 @@ def main() -> None:
     client = GitHubClient(token=args.github_token, tokens=tokens)
     state = CheckpointState(Path(args.state_file))
     appender = CSVAppender(out_dir / "ubw_collected_full.csv")
+    dlq = DeadLetterQueue(Path(args.dlq_file), max_attempts=args.dlq_max_attempts)
 
     repos = load_repos(Path(args.repos_csv))
     if args.max_repos is not None:
@@ -1069,7 +1101,7 @@ def main() -> None:
         )
         executor = ThreadPoolExecutor(max_workers=args.parallel_workers)
         code_comment_futures = [
-            executor.submit(process_repo_code_comment, repo, clone_root, args.keep_clones, appender, state)
+            executor.submit(process_repo_code_comment, repo, clone_root, args.keep_clones, appender, state, dlq)
             for repo in pending
         ]
 
@@ -1092,6 +1124,10 @@ def main() -> None:
                 "Coleta via Search API em %d lotes de repositórios (~%.1f repos/lote).",
                 len(batches), len(repos) / len(batches),
             )
+            total_units = sum(
+                sum(1 for r in repos if not state.is_done(r["repo_full_name"], t)) for t in api_types
+            )
+            api_progress = tqdm(total=total_units, desc="API (issue/pr/commit)", unit="repo×tipo")
             for bi, batch in enumerate(batches, start=1):
                 for artifact_type in api_types:
                     pending = [r for r in batch if not state.is_done(r["repo_full_name"], artifact_type)]
@@ -1115,6 +1151,8 @@ def main() -> None:
                         state.mark_done(repo_full_name, artifact_type)
                         if n:
                             logger.info("  %s %s: %d registros", artifact_type, repo_full_name, n)
+                    api_progress.update(len(pending))
+            api_progress.close()
 
     finally:
         if executor is not None:
@@ -1122,12 +1160,14 @@ def main() -> None:
                 "Loop da API concluído. Aguardando os workers de code_comment que ainda "
                 "estiverem rodando em segundo plano..."
             )
-            for fut in as_completed(code_comment_futures):
+            for fut in tqdm(as_completed(code_comment_futures), total=len(code_comment_futures),
+                             desc="code_comment", unit="repo"):
                 exc = fut.exception()
                 if exc is not None:
                     logger.error("Worker de code_comment terminou com erro: %s", exc)
             executor.shutdown(wait=True)
         appender.close()
+        dlq.close()
 
     apply_threshold_and_split(out_dir / "ubw_collected_full.csv", out_dir)
     logger.info("Coleta concluída. Data de corte: %s", COLLECTION_CUTOFF.isoformat())
