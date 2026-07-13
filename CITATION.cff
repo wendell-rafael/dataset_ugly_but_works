@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "Se você usar este software, cite-o conforme abaixo."
 type: software
-title: "UBW Mining Infrastructure: infraestrutura de mineração multi-artefato do GitHub com tolerância a falhas"
+title: "gh-satd-miner: infraestrutura de mineração multi-artefato do GitHub com tolerância a falhas"
 abstract: >-
   Infraestrutura de coleta usada no estudo empírico UBW ("Ugly But It
   Works") sobre comentários de resignação funcional em quatro tipos de
@@ -32,7 +32,7 @@ authors:
 license: MIT
 version: 0.1.0
 date-released: "2026-07-09"
-repository-code: "PREENCHER — URL do repositório git assim que existir (ainda não há git init neste diretório)"
+repository-code: "https://github.com/wendell-rafael/dataset_ugly_but_works"
 keywords:
   - mineração de repositórios
   - self-admitted technical debt

@@ -1,4 +1,4 @@
-# UBW Mining Infrastructure
+# gh-satd-miner
 
 Infraestrutura de coleta usada no estudo empírico **UBW ("Ugly But It Works")**
 — pesquisa de mestrado (PPGCC/UFCG, orientação do Prof. João Arthur Brunet
