@@ -6,6 +6,21 @@ refletem quando o problema foi identificado e corrigido, não necessariamente
 commits formais (o projeto ainda não tinha controle de versão até este
 registro).
 
+## 2026-07-13 — checkpoint O(n²): bloqueio real pra rodar todos os 77.894 repos
+
+Achado ao avaliar "estamos prontos pra rodar com o corpus inteiro?":
+`CheckpointState._save()` reescrevia o JSON inteiro de `collection_state.json`
+a cada `mark_done()` — barato no `round_800` (~3 mil chamadas), mas
+quadrático em ~78 mil repos x 4 artefatos (~310 mil chamadas). Benchmark
+real: extrapolação linear a partir de 500 repos deu **~21h só de escrita de
+checkpoint** nessa escala, por cima do tempo de rede. Corrigido separando
+durabilidade (append-only `.log`, O(1) por chamada, uma linha por
+conclusão) de compatibilidade com `data/dashboard.html` (snapshot completo
+no formato antigo, regravado só a cada 200 chamadas). Validado: mesmo
+benchmark caiu de ~21h estimadas para ~24s reais na escala de 77.894 repos;
+retomada a partir do `.log` reconstrói o estado idêntico; checkpoints
+antigos (sem `.log`) continuam carregando e migram na primeira escrita.
+
 ## 2026-07-13 — circuit breaker, Dead Letter Queue e barra de progresso
 
 Preparação pra rodar a coleta em escala bem maior que o `round_800`, com
