@@ -112,16 +112,52 @@ class CheckpointState:
 
     Thread-safe: o pool de workers de `code_comment` (Seção "Paralelização"
     abaixo) chama `mark_done` concorrentemente com o loop principal da API.
+
+    Achado em escala (2026-07-13): a versão original reescrevia o JSON
+    INTEIRO (`self.path`, formato lido por data/dashboard.html) a cada
+    `mark_done()`. Em corpus pequeno (ex: round_800, ~3 mil chamadas) isso é
+    barato; em ~78 mil repos x 4 artefatos (~310 mil chamadas), o custo é
+    quadrático — cada rewrite fica maior conforme `completed` cresce.
+    Benchmark real: só a escrita do checkpoint passaria de horas.
+
+    Corrigido separando as duas responsabilidades:
+    - `<path>.log`: append-only, uma linha JSON por chamada, O(1) e sempre
+      com flush — é a fonte de verdade pra durabilidade (sobrevive a kill
+      -9 sem perder nada além da chamada em andamento).
+    - `path` (ex: collection_state.json): snapshot completo no formato
+      antigo (`{"completed": [...]}`), regravado só a cada
+      `SNAPSHOT_EVERY` chamadas — mantém `data/dashboard.html` funcionando
+      sem nenhuma mudança nele, com custo total ~SNAPSHOT_EVERY vezes menor.
     """
+
+    SNAPSHOT_EVERY = 200
 
     def __init__(self, path: Path):
         self.path = path
+        self.log_path = path.with_suffix(path.suffix + ".log")
         self.completed: set[tuple[str, str]] = set()
         self._lock = threading.Lock()
-        if path.exists():
+        self._calls_since_snapshot = 0
+
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if self.log_path.exists():
+            with self.log_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    pair = json.loads(line)
+                    self.completed.add((pair["repo"], pair["artifact_type"]))
+        elif path.exists():
+            # Retrocompatibilidade: checkpoint de uma rodada anterior ao
+            # log append-only. Migra pro novo formato na primeira escrita.
             data = json.loads(path.read_text(encoding="utf-8"))
             self.completed = {tuple(pair) for pair in data.get("completed", [])}
+
+        if self.completed:
             logger.info("Checkpoint carregado: %d combinações (repo, artefato) já concluídas.", len(self.completed))
+
+        self._log_fh = self.log_path.open("a", encoding="utf-8")
 
     def is_done(self, repo: str, artifact_type: str) -> bool:
         with self._lock:
@@ -129,12 +165,24 @@ class CheckpointState:
 
     def mark_done(self, repo: str, artifact_type: str) -> None:
         with self._lock:
+            if (repo, artifact_type) in self.completed:
+                return
             self.completed.add((repo, artifact_type))
-            self._save()
+            self._log_fh.write(json.dumps({"repo": repo, "artifact_type": artifact_type}) + "\n")
+            self._log_fh.flush()
+            self._calls_since_snapshot += 1
+            if self._calls_since_snapshot >= self.SNAPSHOT_EVERY:
+                self._write_snapshot()
+                self._calls_since_snapshot = 0
 
-    def _save(self) -> None:
-        # Chamado sempre com self._lock já adquirido.
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+    def close(self) -> None:
+        with self._lock:
+            self._write_snapshot()
+            self._log_fh.close()
+
+    def _write_snapshot(self) -> None:
+        # Chamado sempre com self._lock já adquirido. Formato compatível
+        # com data/dashboard.html — não mudar sem atualizar o dashboard.
         self.path.write_text(
             json.dumps({"completed": sorted(list(p) for p in self.completed)}, indent=2), encoding="utf-8"
         )
@@ -1168,6 +1216,7 @@ def main() -> None:
             executor.shutdown(wait=True)
         appender.close()
         dlq.close()
+        state.close()
 
     apply_threshold_and_split(out_dir / "ubw_collected_full.csv", out_dir)
     logger.info("Coleta concluída. Data de corte: %s", COLLECTION_CUTOFF.isoformat())
