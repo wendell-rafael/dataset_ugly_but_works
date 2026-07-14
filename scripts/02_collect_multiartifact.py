@@ -944,6 +944,27 @@ _VENDOR_PATHSPEC_EXCLUDES = [
 ]
 
 
+def _dedup_identical_body_text(records: list[UBWRecord]) -> list[UBWRecord]:
+    """Remove duplicatas exatas de body_text dentro do mesmo repositório.
+
+    Achado real (rodada de 3.000 repos, 2026-07-14): 18% dos code_comment
+    sobreviviam ao filtro de vendoring por path/nome porque eram o mesmo
+    arquivo de build com nome de bundle com hash de conteúdo (ex:
+    "vendor-1cbfbdc539760dce.js"), impossível de reconhecer por padrão de
+    nome. Mantém a primeira ocorrência (mais antiga, já que os eventos são
+    processados em ordem cronológica).
+    """
+    seen: set[str] = set()
+    deduped = []
+    for rec in records:
+        key = rec.body_text.strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(rec)
+    return deduped
+
+
 def collect_code_comment_records(repo_dir: Path, repo: dict) -> list[UBWRecord]:
     pathspecs = [f"*{ext}" for ext in lexicon.CODE_EXTENSIONS] + _VENDOR_PATHSPEC_EXCLUDES
     all_events: list[RawEvent] = []
@@ -952,7 +973,8 @@ def collect_code_comment_records(repo_dir: Path, repo: dict) -> list[UBWRecord]:
             all_events.extend(find_raw_events_for_expression(repo_dir, entry.expression, entry.category, pathspecs))
         except (RuntimeError, subprocess.TimeoutExpired) as exc:
             logger.error("Falha ao buscar code_comment em %s (%s): %s", repo["repo_full_name"], entry.expression, exc)
-    return pair_events_into_records(repo_dir, repo, all_events)
+    records = pair_events_into_records(repo_dir, repo, all_events)
+    return _dedup_identical_body_text(records)
 
 
 # Pós-processamento: idade do repositório + threshold (Seção 2.4)
