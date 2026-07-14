@@ -234,6 +234,7 @@ VENDORED_PATH_MARKERS: list[str] = [
     "vendor/", "node_modules/", "third_party/", "thirdparty/", "external/",
     "extern/", "deps/", "Godeps/", "/src/golang.org/", "/src/github.com/",
     "site-packages/", "dist-packages/", ".venv/", "bower_components/",
+    "dist/", "build/",
 ]
 
 # Diretório com nome de pacote + versão embutida (ex: "rocksdb-8.1.1/",
@@ -255,12 +256,21 @@ VENDORED_FILENAMES: set[str] = {
     "angular.js", "angular.min.js", "vue.js", "vue.min.js",
     "react.js", "react.min.js", "react-dom.js", "react-dom.min.js",
     "popper.js", "popper.min.js", "modernizr.js", "normalize.css",
+    # search_index.js: índice de busca gerado pelo Documenter.jl, uma cópia
+    # por versão de doc commitada — achado real na rodada de 3.000 repos
+    # (2026-07-14): 65 registros de um único repo eram cópias desse arquivo.
+    "search_index.js",
 }
+
+# Sufixo de arquivo minificado/compilado — não tem nome fixo (cada projeto
+# nomeia o próprio bundle), então checagem é por sufixo, não por nome exato.
+_MINIFIED_SUFFIXES = (".min.js", ".min.css")
 
 
 def is_vendored_path(path: str) -> bool:
     """Heurística: o path pertence a uma árvore de código vendorizado/de
-    terceiros, e deve ser excluído da coleta de code_comment.
+    terceiros ou é saída de build/minificação, e deve ser excluído da
+    coleta de code_comment.
 
     Best-effort — pode ter falsos negativos (vendoring sem convenção de
     nome reconhecível) e, mais raramente, falsos positivos (uma pasta do
@@ -270,7 +280,10 @@ def is_vendored_path(path: str) -> bool:
     normalized = path if path.startswith("/") else f"/{path}"
     if any(marker in normalized for marker in VENDORED_PATH_MARKERS):
         return True
-    if path.rsplit("/", 1)[-1].lower() in VENDORED_FILENAMES:
+    filename = path.rsplit("/", 1)[-1].lower()
+    if filename in VENDORED_FILENAMES:
+        return True
+    if filename.endswith(_MINIFIED_SUFFIXES):
         return True
     return bool(_VENDORED_VERSION_DIR_RE.search(path))
 
