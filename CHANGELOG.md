@@ -6,6 +6,27 @@ refletem quando o problema foi identificado e corrigido, não necessariamente
 commits formais (o projeto ainda não tinha controle de versão até este
 registro).
 
+## 2026-07-14 — contaminação por arquivo gerado/build em code_comment
+
+Análise da rodada de 3.000 repositórios (`data/full_run/`) achou 31,2% dos
+`code_comment` como duplicata exata de texto dentro do mesmo repo — o
+mesmo comentário replicado em `dist/`, `build/`, `.min.js`, e sobretudo
+`search_index.js` (índice de busca do Documenter.jl, uma cópia por versão
+de doc commitada; um único repo, `AlgebraicJulia/Catlab.jl`, tinha 65
+registros que eram todos esse arquivo). Impacto real medido: 3.741 → 3.286
+registros deduplicando, e o subconjunto RQ2 caía de 246 para 224 repos —
+22 repositórios só ultrapassavam o threshold de ≥3 ocorrências por causa
+de artefato de build duplicado. Corrigido em duas camadas:
+- `ubw/lexicon.py`: `search_index.js` em `VENDORED_FILENAMES`, sufixo
+  `.min.js`/`.min.css`, e `dist/`/`build/` em `VENDORED_PATH_MARKERS`.
+- `scripts/02_collect_multiartifact.py`: `_dedup_identical_body_text()`
+  como rede de segurança — bundles com nome de arquivo hasheado (ex:
+  `vendor-1cbfbdc539760dce.js`, hash muda a cada build) não têm padrão de
+  nome reconhecível, só dedup por texto pega esses casos. Validado contra
+  o pior caso real (Catlab.jl): 65 registros → 0.
+- **Dataset já coletado em `data/full_run/` ainda não foi reprocessado**
+  com os filtros novos — pendência antes de usar esses números em RQ1/RQ2.
+
 ## 2026-07-13 — checkpoint O(n²): bloqueio real pra rodar todos os 77.894 repos
 
 Achado ao avaliar "estamos prontos pra rodar com o corpus inteiro?":
