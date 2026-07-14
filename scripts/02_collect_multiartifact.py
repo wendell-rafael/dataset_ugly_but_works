@@ -965,14 +965,33 @@ def _dedup_identical_body_text(records: list[UBWRecord]) -> list[UBWRecord]:
     return deduped
 
 
+# As 25 expressões do léxico eram buscadas uma de cada vez por repo, mas
+# `git log -S` é 100% local (sem rate limit de rede) — só o `git clone`
+# está limitado pela detecção de abuso do GitHub. Achado real (rodada de
+# 3.000 repos, 2026-07-14): um repo grande (1,1GB) levou >1min30s de CPU
+# NUM SÓ `git log -S`; com 25 sequenciais, um repo grande sozinho podia
+# segurar um worker por dezenas de minutos enquanto os outros 7 workers
+# ficavam ociosos esperando repos pequenos acabarem. Paralelizar as
+# expressões dentro do mesmo repo (thread pool aninhado) não aumenta a
+# pressão sobre o GitHub — só usa mais CPU local, que sobra.
+EXPRESSION_SEARCH_WORKERS = 4
+
+
 def collect_code_comment_records(repo_dir: Path, repo: dict) -> list[UBWRecord]:
     pathspecs = [f"*{ext}" for ext in lexicon.CODE_EXTENSIONS] + _VENDOR_PATHSPEC_EXCLUDES
     all_events: list[RawEvent] = []
-    for entry in lexicon.iter_lexicon():
+
+    def _search(entry: lexicon.LexiconEntry) -> list[RawEvent]:
         try:
-            all_events.extend(find_raw_events_for_expression(repo_dir, entry.expression, entry.category, pathspecs))
+            return find_raw_events_for_expression(repo_dir, entry.expression, entry.category, pathspecs)
         except (RuntimeError, subprocess.TimeoutExpired) as exc:
             logger.error("Falha ao buscar code_comment em %s (%s): %s", repo["repo_full_name"], entry.expression, exc)
+            return []
+
+    with ThreadPoolExecutor(max_workers=EXPRESSION_SEARCH_WORKERS) as pool:
+        for events in pool.map(_search, lexicon.iter_lexicon()):
+            all_events.extend(events)
+
     records = pair_events_into_records(repo_dir, repo, all_events)
     return _dedup_identical_body_text(records)
 
