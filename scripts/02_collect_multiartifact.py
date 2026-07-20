@@ -39,6 +39,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -599,6 +600,36 @@ def git_run(repo_dir: Path, args: list[str], check: bool = False, timeout: int =
     return result.stdout
 
 
+# Achado real (2026-07-17, OOM às 23:32 com --parallel-workers 12): `git
+# show <sha> --unified=0` em find_raw_events_for_expression() não tinha
+# teto de tamanho. Um único commit patológico num repo grande (ex:
+# regeneração de código gerado, rename em massa — candidatos observados:
+# cockroachdb/cockroach, bitwarden/clients, carbon-design-system, ambos
+# com 1-3GB de histórico) pode gerar um diff de centenas de MB/GB numa
+# string Python só. Com múltiplos workers concorrentes (12 workers x 4
+# threads de expressão = até 48 chamadas de `git show` simultâneas), isso
+# soma rápido e explica o crescimento de RAM observado (9,6GB -> 23,5GB em
+# ~10h, acelerando nas últimas horas antes do OOM kill).
+GIT_SHOW_MAX_BYTES = 5_000_000  # 5MB por diff — generoso pro caso normal, barra o patológico
+
+
+def git_show_capped(repo_dir: Path, args: list[str], max_bytes: int = GIT_SHOW_MAX_BYTES,
+                     timeout: int = GIT_TIMEOUT_SECONDS) -> tuple[str, bool]:
+    """Como git_run, mas encadeia a saída em `head -c max_bytes` no shell.
+    Isso limita o buffer tanto no processo pai (Python só recebe até
+    max_bytes) quanto no filho (`git` recebe SIGPIPE e para de escrever
+    assim que `head` já leu o suficiente e sai, em vez de continuar
+    gerando diff que ninguém vai ler). Retorna (saída, foi_truncado).
+    """
+    git_cmd = "git -C " + shlex.quote(str(repo_dir)) + " " + " ".join(shlex.quote(a) for a in args)
+    result = subprocess.run(
+        ["bash", "-c", f"{git_cmd} | head -c {max_bytes}"],
+        capture_output=True, text=True, errors="replace", timeout=timeout,
+    )
+    truncated = len(result.stdout.encode("utf-8", errors="replace")) >= max_bytes
+    return result.stdout, truncated
+
+
 GIT_CLONE_MAX_RETRIES = 4
 GIT_CLONE_BACKOFF_BASE_SECONDS = 5.0
 
@@ -773,10 +804,18 @@ def find_raw_events_for_expression(
         date = parse_iso_datetime(date_str)
         if date is None:
             continue
-        diff_out = git_run(
+        diff_out, truncated = git_show_capped(
             repo_dir, ["show", sha, "--unified=0", "--pretty=format:", "--", *pathspecs],
             timeout=GIT_TIMEOUT_SECONDS,
         )
+        if truncated:
+            # Diff patológico (commit gigante) — processa só o que coube
+            # no teto; pode perder hunks no final do diff, aceito em troca
+            # de não estourar memória (ver comentário em GIT_SHOW_MAX_BYTES).
+            logger.warning(
+                "Diff de %s em %s (commit %s) truncado em %d bytes (commit gigante).",
+                expression, repo_dir.name, sha[:8], GIT_SHOW_MAX_BYTES,
+            )
         for path, changed_lines in parse_diff_hunks(diff_out):
             if lexicon.is_vendored_path(path):
                 continue
@@ -1261,6 +1300,21 @@ def main() -> None:
 
     apply_threshold_and_split(out_dir / "ubw_collected_full.csv", out_dir)
     logger.info("Coleta concluída. Data de corte: %s", COLLECTION_CUTOFF.isoformat())
+
+    # Sentinela de conclusão real: escrito SÓ aqui, como último ato de
+    # main(), depois de o loop da API e TODOS os workers de code_comment
+    # terminarem (o bloco finally acima faz executor.shutdown(wait=True)).
+    # É o sinal confiável de "terminou de verdade" para o watchdog — imune
+    # a duas armadilhas já observadas: (a) o OOM kill mata o processo antes
+    # daqui, então o arquivo não é escrito e o watchdog reinicia; (b) o
+    # texto "CADEIA CONCLUÍDA" que o bash pai imprime mesmo quando o Python
+    # foi morto no meio (falso positivo). Substitui o antigo threshold
+    # cego de ">= 74000 repos" no watchdog, que podia nunca ser atingido
+    # (loop de reinício infinito) se o total final de repos com API
+    # concluída ficasse abaixo do número chutado.
+    (out_dir / "COLLECTION_COMPLETE").write_text(
+        COLLECTION_CUTOFF.isoformat() + "\n", encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":
