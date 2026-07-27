@@ -60,6 +60,18 @@ from ubw.schema import UBWRecord  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
+# Achado real (2026-07-23): apply_threshold_and_split() crashava no fim da
+# coleta com `_csv.Error: field larger than field limit (131072)`. O limite
+# padrão do módulo csv é 128KB por campo; `body_text` de issue_body/pr_body
+# não tem truncamento (diferente de code_comment, que corta em 500 chars),
+# e algum PR/issue com corpo muito grande (ex: changelog colado) estourava
+# isso. Sem esse fix, o processo entraria num loop de crash-reinício: toda
+# vez que a coleta terminasse de verdade, crashava de novo nesse mesmo
+# ponto, sem nunca escrever o sentinela de conclusão nem gerar o
+# subconjunto de RQ2.
+csv.field_size_limit(10_000_000)
+
+
 class _TqdmLoggingHandler(logging.Handler):
     """Log via tqdm.write() em vez de print/stderr direto — sem isso, cada
     linha de log quebra a barra de progresso no meio."""
@@ -142,13 +154,41 @@ class CheckpointState:
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self.log_path.exists():
-            with self.log_path.open("r", encoding="utf-8") as f:
+            # Achado real (2026-07-21): queda de energia/desligamento não
+            # limpo no meio de uma escrita deixa a última linha corrompida
+            # (bytes nulos do filesystem zerando um bloco parcialmente
+            # escrito — mesma classe de bug já vista no round_800, seção
+            # 2.4 do relatório). Sem tratar isso aqui, o processo crasha
+            # logo no __init__ toda vez que tenta reiniciar, e como isso
+            # acontece ANTES de qualquer lógica de retry/DLQ, o watchdog
+            # fica preso reiniciando pra sempre no mesmo erro sem nunca
+            # progredir — precisou de intervenção manual até essa correção.
+            # Agora: linha corrompida é pulada (não perde nenhum dado real,
+            # já que corrupção só acontece na ÚLTIMA linha, que nunca tinha
+            # sido confirmada com fsync antes da queda) e o arquivo é
+            # reescrito sem ela, então o problema não se repete no próximo
+            # load.
+            corrupted = 0
+            with self.log_path.open("r", encoding="utf-8", errors="replace") as f:
                 for line in f:
                     line = line.strip()
                     if not line:
                         continue
-                    pair = json.loads(line)
+                    try:
+                        pair = json.loads(line)
+                    except json.JSONDecodeError:
+                        corrupted += 1
+                        continue
                     self.completed.add((pair["repo"], pair["artifact_type"]))
+            if corrupted:
+                logger.warning(
+                    "Checkpoint: %d linha(s) corrompida(s) no log (provável queda de energia "
+                    "no meio de uma escrita) — descartadas e o arquivo será reescrito limpo.",
+                    corrupted,
+                )
+                with self.log_path.open("w", encoding="utf-8") as f:
+                    for repo, artifact_type in sorted(self.completed):
+                        f.write(json.dumps({"repo": repo, "artifact_type": artifact_type}) + "\n")
         elif path.exists():
             # Retrocompatibilidade: checkpoint de uma rodada anterior ao
             # log append-only. Migra pro novo formato na primeira escrita.
@@ -1104,8 +1144,18 @@ def apply_threshold_and_split(full_csv: Path, out_dir: Path) -> None:
     dataset completo (todos os repositórios, inclusive com zero
     ocorrências, como denominador — Seção 2.4).
     """
-    with full_csv.open(newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
+    # Achado real (2026-07-23): uma queda não-limpa no meio de uma escrita
+    # pode zerar o início de uma linha do CSV (mesma classe de bug já vista
+    # no checkpoint), deixando bytes nulos que o módulo csv não aceita
+    # (`_csv.Error: line contains NUL`) e crashava esta função — chamada só
+    # no fim de main(), então o processo nunca chegava a escrever o
+    # sentinela de conclusão, preso num loop de crash-reinício. Lendo em
+    # binário e removendo bytes nulos antes do parsing, uma linha corrompida
+    # vira uma linha com campos vazios/deslocados (perdida, mas não trava o
+    # processo) em vez de derrubar a execução inteira.
+    with full_csv.open("rb") as f:
+        raw = f.read().replace(b"\x00", b"")
+    rows = list(csv.DictReader(raw.decode("utf-8", errors="replace").splitlines()))
 
     counts_by_repo_artifact: dict[tuple[str, str], int] = {}
     for row in rows:
