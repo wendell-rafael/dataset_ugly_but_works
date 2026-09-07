@@ -118,7 +118,20 @@ _TOKEN_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("generic_bearer", re.compile(r"\bBearer\s+[A-Za-z0-9\-_.=]{12,}\b")),
 ]
 
-_EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+# Sem `\b` no fim de propósito. Com ele, e-mail real vazava sempre que o
+# caractere seguinte era de palavra — e isso é comum aqui, porque `body_text`
+# vem com as quebras de linha removidas, então o endereço fica colado no texto
+# da linha seguinte. Casos reais que escaparam no export de 2026-09-07:
+# `dpranke@chromium.org` + `CQ_INCLUDE_TRYBOTS`, `pabs@debian.org` + `pep8`,
+# `jeff.paul@10up.com` + `3:`, e `_nicolai.stange@zmaw.de` seguido do `_` de
+# ênfase em Markdown. O `\b` inicial fica: evita casar o sufixo de coisas como
+# `...@gmail.com` (endereço já elidido no texto original).
+#
+# O custo é mascarar alguns identificadores que têm forma de e-mail sem serem
+# (nome de algoritmo SSH como `chacha20-poly1305@openssh.com`, versão de pacote
+# npm). Já eram mascarados de forma inconsistente antes — quando o `\b` final
+# calhava de casar — e sub-mascarar endereço de pessoa é o erro mais caro.
+_EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
 # @handle — possível autor/terceiro mencionado. group(1) é o handle sem '@'.
 _MENTION_RE = re.compile(r"(?<![\w@./])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\b")

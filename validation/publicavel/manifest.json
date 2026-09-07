@@ -1,6 +1,6 @@
 {
   "script": "16_mascara_validation.py",
-  "gerado_em_utc": "2026-09-07T22:52:03.003447+00:00",
+  "gerado_em_utc": "2026-09-07T22:58:23.482980+00:00",
   "mascarador": "scripts/06_export_publishable.py:apply_pii_masking",
   "colunas_removidas_sempre": [
     "author_name",
