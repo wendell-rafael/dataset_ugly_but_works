@@ -32,7 +32,11 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 
-EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+# Deliberadamente igual ao `_EMAIL_RE` do 06: `\b` no inicio, nada no fim. Se o
+# guard fosse mais permissivo que o mascarador, acusaria o proprio export como
+# sujo para sempre; se fosse mais restrito, deixaria passar o que o mascarador
+# nao pega. Mantenha os dois em sincronia.
+EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
 # Falsos positivos conhecidos: placeholders do mascarador, dominios de exemplo
 # e os enderecos que o proprio GitHub gera para contas sem e-mail publico.
@@ -64,6 +68,32 @@ def arquivos_no_index() -> list[Path]:
     return [RAIZ / linha for linha in saida.splitlines() if linha]
 
 
+def _dentro_de_caminho(texto: str, inicio: int, fim: int) -> bool:
+    """O casamento faz parte de um token que contem `/`?
+
+    `@` aparece em caminho de arquivo legitimo com forma de e-mail: chunk do npm
+    (`next@15.3.2_react-dom@19.1.0.js`), cache de modulo Go
+    (`golang.org/toolchain@v0.0.1-go1.23.12.darwin-arm64`), diretorio de
+    extensao Mozilla (`sieve@mozdev.org/chrome/...`). Esses vivem em
+    `artifact_id` e `url`, precisam ser preservados literalmente -- mascarar
+    quebraria o endereco que localiza o artefato -- e nao sao PII.
+
+    Endereco de pessoa em prosa (`Signed-off-by: Nome <...>`) nao tem `/` no
+    token, entao segue sendo detectado.
+    """
+    esq = texto.rfind(" ", 0, inicio) + 1
+    for delim in ("\n", "\t", "<", ">", '"', ","):
+        pos = texto.rfind(delim, 0, inicio)
+        if pos + 1 > esq:
+            esq = pos + 1
+    dir_ = len(texto)
+    for delim in (" ", "\n", "\t", "<", ">", '"', ","):
+        pos = texto.find(delim, fim)
+        if pos != -1:
+            dir_ = min(dir_, pos)
+    return "/" in texto[esq:dir_]
+
+
 def inspeciona(caminho: Path) -> tuple[list[str], list[str]]:
     """Devolve (emails_encontrados, colunas_de_pii)."""
     try:
@@ -71,7 +101,11 @@ def inspeciona(caminho: Path) -> tuple[list[str], list[str]]:
     except (OSError, UnicodeDecodeError):
         return [], []
 
-    emails = sorted({m for m in EMAIL.findall(texto) if not BENIGNO.search(m)})
+    emails = sorted({
+        m.group() for m in EMAIL.finditer(texto)
+        if not BENIGNO.search(m.group())
+        and not _dentro_de_caminho(texto, m.start(), m.end())
+    })
 
     colunas: list[str] = []
     if caminho.suffix == ".csv":
@@ -92,7 +126,9 @@ def main() -> int:
     args = p.parse_args()
 
     if args.caminhos:
-        alvos = args.caminhos
+        # Resolve para absoluto: caminho relativo passado na linha de comando
+        # quebrava o `relative_to(RAIZ)` do relatorio.
+        alvos = [c.resolve() for c in args.caminhos]
     elif args.staged:
         alvos = arquivos_no_index()
     else:
@@ -114,7 +150,9 @@ def main() -> int:
 
     print(f"\nPII ENCONTRADA em {len(achados)} arquivo(s):\n")
     for alvo, emails, colunas in achados:
-        rel = alvo.relative_to(RAIZ)
+        # Arquivo fora da raiz do repo (checagem avulsa) aparece com o caminho
+        # completo em vez de quebrar.
+        rel = alvo.relative_to(RAIZ) if alvo.is_relative_to(RAIZ) else alvo
         print(f"  {rel}")
         if colunas:
             print(f"      colunas: {', '.join(colunas)}")
