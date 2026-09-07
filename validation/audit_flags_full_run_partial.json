@@ -1,0 +1,537 @@
+{
+  "csv": "data/full_run/ubw_collected_full.csv",
+  "is_partial_corpus": true,
+  "total_records": 73412,
+  "n_repos": 16614,
+  "flags": [
+    {
+      "check": "1.1 time_to_event_days negativo",
+      "description": "registros com tempo até evento negativo (impossível)",
+      "count": 0,
+      "total": 73412,
+      "pct": 0.0,
+      "severity": "info",
+      "examples": [],
+      "note": ""
+    },
+    {
+      "check": "1.2 time_to_event_days == 0",
+      "description": "registros com evento no mesmo dia da introdução",
+      "count": 10929,
+      "total": 73412,
+      "pct": 14.89,
+      "severity": "baixa",
+      "examples": [],
+      "note": "concentração por artifact_type: {'pr_body': 7232, 'issue_body': 2607, 'code_comment': 1079, 'commit_message': 11} — pr_body costuma ter fração alta (merges rápidos, inclusive PRs de bot); não é bug por si só, mas junto com o CHECK 4 (bots) pode indicar 'eventos' triviais infláveis."
+    },
+    {
+      "check": "1.3 removed_at < created_at",
+      "description": "remoção registrada antes da introdução (impossível)",
+      "count": 0,
+      "total": 73412,
+      "pct": 0.0,
+      "severity": "info",
+      "examples": [],
+      "note": ""
+    },
+    {
+      "check": "1.4 is_censored=1 com removed_at preenchido",
+      "description": "incoerência censura/remoção",
+      "count": 0,
+      "total": 73412,
+      "pct": 0.0,
+      "severity": "info",
+      "examples": [],
+      "note": ""
+    },
+    {
+      "check": "1.5 is_censored=0 com removed_at nulo",
+      "description": "incoerência censura/remoção (evento sem data)",
+      "count": 0,
+      "total": 73412,
+      "pct": 0.0,
+      "severity": "info",
+      "examples": [],
+      "note": ""
+    },
+    {
+      "check": "1.6 time_to_event_days > repo_age_days",
+      "description": "evento mais 'velho' do que a idade calculada do repositório — repo_age_days não é uma covariável confiável nesses casos",
+      "count": 20455,
+      "total": 73412,
+      "pct": 27.86,
+      "severity": "alta",
+      "examples": [
+        {
+          "repo_full_name": "ourbigbook/ourbigbook",
+          "artifact_type": "commit_message",
+          "created_at": "1970-01-01T00:00:00+00:00",
+          "time_to_event_days": 20655,
+          "repo_age_days": 2489
+        },
+        {
+          "repo_full_name": "davidgiven/ack",
+          "artifact_type": "commit_message",
+          "created_at": "1987-08-05T13:09:37+00:00",
+          "time_to_event_days": 14226,
+          "repo_age_days": 4047
+        },
+        {
+          "repo_full_name": "BRL-CAD/brlcad",
+          "artifact_type": "commit_message",
+          "created_at": "1988-09-06T16:05:20+00:00",
+          "time_to_event_days": 13827,
+          "repo_age_days": 1947
+        },
+        {
+          "repo_full_name": "UnNetHack/UnNetHack",
+          "artifact_type": "code_comment",
+          "created_at": "1990-06-05T00:00:00+00:00",
+          "time_to_event_days": 13198,
+          "repo_age_days": 23
+        },
+        {
+          "repo_full_name": "davidgiven/ack",
+          "artifact_type": "code_comment",
+          "created_at": "1990-12-18T11:14:34+00:00",
+          "time_to_event_days": 12998,
+          "repo_age_days": 2
+        },
+        {
+          "repo_full_name": "UnNetHack/UnNetHack",
+          "artifact_type": "code_comment",
+          "created_at": "1993-01-28T00:00:00+00:00",
+          "time_to_event_days": 12230,
+          "repo_age_days": 23
+        }
+      ],
+      "note": "por artifact_type: {'code_comment': 13627, 'commit_message': 6797, 'issue_body': 31}. Duas causas raiz distintas (ver relatório, Flag 1.6): (a) code_comment — get_first_commit_date() usa `git log --reverse` (só HEAD), enquanto a busca de eventos usa `git log --all -S` (todas as refs) — assimetria de refs; (b) commit_message/issue_body — repo_age_days vem do `created_at` do SEART/GitHub (entidade do repo), que pode ser muito mais recente que o histórico git real importado de outra origem (conversões CVS/SVN antigas, forks destacados). 1 registro(s) com created_at = epoch 1970-01-01 (bug de data provável, não idade real): [{'repo_full_name': 'ourbigbook/ourbigbook', 'artifact_type': 'commit_message', 'artifact_id': '5f87b29deb581fcac5866225b24eb2f065598925'}]"
+    },
+    {
+      "check": "3.1 body_text duplicado (mesmo repo + mesmo artifact_type)",
+      "description": "possível contaminação por geração/backport/cherry-pick não capturada pelo dedup do script 02 (que hoje só roda para code_comment, dentro de uma única execução, por repo)",
+      "count": 3225,
+      "total": 73412,
+      "pct": 4.39,
+      "severity": "média",
+      "examples": [
+        {
+          "repo_artifact": "CTSRD-CHERI/cheribsd / commit_message",
+          "n_dup": 380
+        },
+        {
+          "repo_artifact": "logicalclocks/rondb / commit_message",
+          "n_dup": 132
+        },
+        {
+          "repo_artifact": "DeFiCh/ain / commit_message",
+          "n_dup": 29
+        },
+        {
+          "repo_artifact": "cms-sw/cmssw / commit_message",
+          "n_dup": 23
+        },
+        {
+          "repo_artifact": "Alfresco/alfresco-community-repo / commit_message",
+          "n_dup": 23
+        },
+        {
+          "repo_artifact": "aio-libs/aiokafka / pr_body",
+          "n_dup": 22
+        },
+        {
+          "repo_artifact": "apache/cloudberry / commit_message",
+          "n_dup": 20
+        },
+        {
+          "repo_artifact": "usnationalarchives/federalregister-api-core / commit_message",
+          "n_dup": 19
+        }
+      ],
+      "note": "por artifact_type: {'commit_message': 2047, 'issue_body': 649, 'pr_body': 529}. Concentrado em commit_message — repositórios com histórico CVS/SVN importado tendem a duplicar texto de commit entre branches de manutenção (cherry-pick/backport preserva a mensagem, muda o SHA)."
+    },
+    {
+      "check": "3.2 (repo, artifact_type, artifact_id, matched_expression) repetido",
+      "description": "mesma célula path:line reaparece com created_at/removed_at diferentes — NÃO é bug de reprocessamento (inspeção manual confirma ciclos genuínos de introdução->remoção->reintrodução no mesmo local), mas quebra a suposição de chave única para quem for agregar por artifact_id",
+      "count": 46,
+      "total": 73412,
+      "pct": 0.06,
+      "severity": "baixa",
+      "examples": [
+        {
+          "repo_full_name": "ApolloAuto/apollo",
+          "artifact_id": "modules/canbus/vehicle/lexus/protocol/shift_rpt_228.cc:152",
+          "created_at": "2018-10-11T12:48:43-07:00",
+          "removed_at": "2022-11-16T09:02:16+08:00"
+        },
+        {
+          "repo_full_name": "ApolloAuto/apollo",
+          "artifact_id": "modules/canbus/vehicle/lexus/protocol/shift_rpt_228.cc:152",
+          "created_at": "2022-11-17T16:18:08+08:00",
+          "removed_at": "2022-11-29T22:35:41+08:00"
+        },
+        {
+          "repo_full_name": "bbc/simorgh",
+          "artifact_id": "src/app/containers/PodcastExternalLinks/index.jsx:125",
+          "created_at": "2021-11-08T14:46:32+00:00",
+          "removed_at": "2021-11-08T16:51:43+00:00"
+        },
+        {
+          "repo_full_name": "bbc/simorgh",
+          "artifact_id": "src/app/containers/PodcastExternalLinks/index.jsx:125",
+          "created_at": "2021-11-08T16:51:43+00:00",
+          "removed_at": "2021-11-08T16:51:43+00:00"
+        },
+        {
+          "repo_full_name": "bluesky-social/social-app",
+          "artifact_id": "src/view/com/composer/TagInput.tsx:81",
+          "created_at": "2023-09-25T17:47:45-05:00",
+          "removed_at": "2023-09-26T14:48:36-05:00"
+        },
+        {
+          "repo_full_name": "bluesky-social/social-app",
+          "artifact_id": "src/view/com/composer/TagInput.tsx:81",
+          "created_at": "2023-09-26T14:48:36-05:00",
+          "removed_at": "2023-09-26T14:48:36-05:00"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "check": "3.3 body_text idêntico entre commit_message e pr_body (mesmo repo)",
+      "description": "mesma admissão contada 2x em RQ1 (squash-merge copia a descrição do PR para a mensagem de commit, ou PR de commit único)",
+      "count": 11,
+      "total": 73412,
+      "pct": 0.01,
+      "severity": "média",
+      "examples": [
+        {
+          "repo_full_name": "Azure/Commercial-Marketplace-SaaS-Accelerator",
+          "commit_sha": "0d7ea229b1f2a3e60cc2db4c20f40dfb0bfe2a1b",
+          "pr_number": "241"
+        },
+        {
+          "repo_full_name": "cobbler/cobbler",
+          "commit_sha": "c0bdcbcdcfc579b6d780cd700bc0f2140bbad35d",
+          "pr_number": "1183"
+        },
+        {
+          "repo_full_name": "cypherstack/stack_wallet",
+          "commit_sha": "d6d4df78221e403f571982d223e166bc2f1ae786",
+          "pr_number": "1036"
+        },
+        {
+          "repo_full_name": "dotnet/efcore",
+          "commit_sha": "a63e8d08c88652658ca53204b39b3a9a672447e0",
+          "pr_number": "148"
+        },
+        {
+          "repo_full_name": "fsprojects/Paket",
+          "commit_sha": "bae0fea9104107eee7084e4e6181edce880cfe25",
+          "pr_number": "2743"
+        },
+        {
+          "repo_full_name": "HabitRPG/habitica",
+          "commit_sha": "0da873308d8d2c2f026f13610cad7a306a019bf9",
+          "pr_number": "4191"
+        },
+        {
+          "repo_full_name": "kulshekhar/ts-jest",
+          "commit_sha": "49518eb2ff292cfa6c127418400b54b6c23562c6",
+          "pr_number": "74"
+        },
+        {
+          "repo_full_name": "numpy/numpy",
+          "commit_sha": "7b137ab0d52d95d5846f903a64207f5d6c0df17e",
+          "pr_number": "6786"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "check": "3.4 body_text idêntico entre issue_body e pr_body (mesmo repo)",
+      "description": "issue e PR com o mesmo corpo (ex.: PR que reusa o texto da issue)",
+      "count": 0,
+      "total": 73412,
+      "pct": 0.0,
+      "severity": "info",
+      "examples": [],
+      "note": ""
+    },
+    {
+      "check": "4.1 author_login bot-like que ESCAPA do filtro atual",
+      "description": "contas automatizadas (CI, merge-bots, dependência de terceiros) que passam pelo filtro de bot porque não têm '[bot]' no login nem estão na lista exata ['dependabot', 'github-actions', 'greenkeeper', 'pull', 'renovate', 'snyk-bot']",
+      "count": 715,
+      "total": 73412,
+      "pct": 0.97,
+      "severity": "alta",
+      "examples": [
+        {
+          "login": "pyup-bot",
+          "n": 277
+        },
+        {
+          "login": "renovate-bot",
+          "n": 42
+        },
+        {
+          "login": "semantic-release-bot",
+          "n": 23
+        },
+        {
+          "login": "jenkins-infra-bot",
+          "n": 23
+        },
+        {
+          "login": "BrewTestBot",
+          "n": 22
+        },
+        {
+          "login": "glassfishrobot",
+          "n": 18
+        },
+        {
+          "login": "greenkeeperio-bot",
+          "n": 13
+        },
+        {
+          "login": "vaadin-bot",
+          "n": 12
+        },
+        {
+          "login": "chainreactorbot",
+          "n": 11
+        },
+        {
+          "login": "k8s-ci-robot",
+          "n": 9
+        }
+      ],
+      "note": "pyup-bot é o caso mais volumoso (mudança de terceiro/changelog de dependência colada em PR de bump, não é admissão do time do repo) — exatamente o caso citado no mandato."
+    },
+    {
+      "check": "4.2 author_name bot-like sem author_login bot-like",
+      "description": "commit_message cujo autor é claramente um bot pelo NOME do commit, mas o filtro atual só checa author_login — gap adicional e independente do 4.1",
+      "count": 147,
+      "total": 73412,
+      "pct": 0.2,
+      "severity": "média",
+      "examples": [
+        {
+          "artifact_type": "code_comment",
+          "author_name": "github-actions[bot]",
+          "author_login": NaN
+        },
+        {
+          "artifact_type": "code_comment",
+          "author_name": "github-actions[bot]",
+          "author_login": NaN
+        },
+        {
+          "artifact_type": "commit_message",
+          "author_name": "Stefan Kroboth",
+          "author_login": "stefan-k"
+        },
+        {
+          "artifact_type": "code_comment",
+          "author_name": "autonoma-github-bot[bot]",
+          "author_login": NaN
+        },
+        {
+          "artifact_type": "code_comment",
+          "author_name": "aks-node-sig-release-assistant[bot]",
+          "author_login": NaN
+        },
+        {
+          "artifact_type": "commit_message",
+          "author_name": "Vladimir Chebotarev",
+          "author_login": "excitoon"
+        },
+        {
+          "artifact_type": "commit_message",
+          "author_name": "Vladimir Chebotarev",
+          "author_login": "excitoon"
+        },
+        {
+          "artifact_type": "commit_message",
+          "author_name": "zeebe-bors[bot]",
+          "author_login": NaN
+        }
+      ],
+      "note": ""
+    },
+    {
+      "check": "5.1 code_comment ainda em path vendorizado pelo filtro OFICIAL",
+      "description": "regressão do filtro atual (is_vendored_path) — deveria ser 0 por construção; se >0, há um caminho de código que grava registros sem passar pelo filtro",
+      "count": 0,
+      "total": 16183,
+      "pct": 0.0,
+      "severity": "info",
+      "examples": [],
+      "note": ""
+    },
+    {
+      "check": "5.2 code_comment em diretório de lib de terceiros conhecida, SEM marcador de path oficial",
+      "description": "heurística adicional (nomes de libs vendorizadas amplamente conhecidas) que o filtro oficial (vendor/, node_modules/, dist/, sufixo -N.N.N) não cobre — gap de recall do filtro de vendoring",
+      "count": 644,
+      "total": 16183,
+      "pct": 3.98,
+      "severity": "alta",
+      "examples": [
+        {
+          "repo_full_name": "3dem/relion",
+          "_path": "src/Eigen/src/Core/CoreEvaluators.h"
+        },
+        {
+          "repo_full_name": "3dem/relion",
+          "_path": "src/Eigen/src/Core/arch/SSE/Complex.h"
+        },
+        {
+          "repo_full_name": "3MFConsortium/lib3mf",
+          "_path": "Libraries/libressl/apps/openssl/s_client.c"
+        },
+        {
+          "repo_full_name": "ablab/spades",
+          "_path": "assembler/src/projects/graph-hmm/googletest/googletest/test/gtest_unittest.cc"
+        },
+        {
+          "repo_full_name": "ablab/spades",
+          "_path": "assembler/ext/include/boost/config/suffix.hpp"
+        },
+        {
+          "repo_full_name": "ablab/spades",
+          "_path": "assembler/ext/include/boost/property_tree/stream_translator.hpp"
+        },
+        {
+          "repo_full_name": "accellera-official/systemc",
+          "_path": "src/sysc/packages/boost/config/suffix.hpp"
+        },
+        {
+          "repo_full_name": "acornjs/acorn",
+          "_path": "test/jquery-string.js"
+        },
+        {
+          "repo_full_name": "AdaEngine/AdaEngine",
+          "_path": "Modules/msdf-atlas-gen/freetype/src/otvalid/otvgdef.c"
+        },
+        {
+          "repo_full_name": "AdaEngine/AdaEngine",
+          "_path": "Modules/msdf-atlas-gen/freetype/src/gzip/ftgzip.c"
+        }
+      ],
+      "note": "cada ocorrência exige checagem manual (nem todo path contendo 'boost' é de fato a lib vendorizada; pode ser nome de variável/projeto) — não aplicar como filtro automático sem revisão, listar como candidato a novo marcador em VENDORED_PATH_MARKERS."
+    },
+    {
+      "check": "5.3 code_comment em arquivo com cara de bundle minificado/hasheado",
+      "description": "nome de arquivo com padrão de build (hash de conteúdo, .min.js/.min.css) fora dos casos já cobertos por VENDORED_FILENAMES/_MINIFIED_SUFFIXES",
+      "count": 25,
+      "total": 16183,
+      "pct": 0.15,
+      "severity": "média",
+      "examples": [
+        {
+          "repo_full_name": "Addepar/ember-table",
+          "_path": "versions/master/assets/vendor-1cbfbdc539760dce4b368016d4563d38.js"
+        },
+        {
+          "repo_full_name": "Addepar/ember-table",
+          "_path": "versions/master/assets/vendor-1cbfbdc539760dce4b368016d4563d38.js"
+        },
+        {
+          "repo_full_name": "antvis/S2",
+          "_path": "styles-9f38b0ecd2c2801b58f4.js"
+        },
+        {
+          "repo_full_name": "BDX-town/Mangane",
+          "_path": "Mangane/packs/js/application-5f3a4febce37a83f5a0c.js"
+        },
+        {
+          "repo_full_name": "blackducksoftware/ohloh-ui",
+          "_path": "public/assets/active_admin-835293ec52ff33915328aca69e191403.js"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "check": "2.0 amostra para verificação Zampetti (remoção acidental vs. real)",
+      "description": "amostra de eventos de remoção de code_comment extraída para inspeção — ver check_removal_validity_sample() e --live-checks para a verificação de fato",
+      "count": 25,
+      "total": 8571,
+      "pct": 0.29,
+      "severity": "info",
+      "examples": [
+        {
+          "repo_full_name": "gnustep/libobjc2",
+          "_path": "selector_table.cc",
+          "matched_expression": "ugly hack",
+          "created_at": "2023-02-19T11:06:29+00:00",
+          "removed_at": "2024-11-12T13:59:36+01:00"
+        },
+        {
+          "repo_full_name": "Next-Flip/Momentum-Apps",
+          "_path": "applications/input/input.c",
+          "matched_expression": "dirty hack",
+          "created_at": "2020-11-06T14:31:59+06:00",
+          "removed_at": "2021-02-10T11:56:05+03:00"
+        },
+        {
+          "repo_full_name": "apache/tvm",
+          "_path": "src/runtime/opengl/opengl_device_api.cc",
+          "matched_expression": "dirty hack",
+          "created_at": "2018-01-20T16:51:34-05:00",
+          "removed_at": "2020-06-01T20:51:49-07:00"
+        },
+        {
+          "repo_full_name": "portainer/portainer",
+          "_path": "api/http/handler/edgetemplates/edgetemplate_list.go",
+          "matched_expression": "temporary fix",
+          "created_at": "2023-11-14T14:54:44+02:00",
+          "removed_at": "2025-02-10T10:46:36+13:00"
+        },
+        {
+          "repo_full_name": "deepinv/deepinv",
+          "_path": "deepinv/tests/test_optim.py",
+          "matched_expression": "dirty hack",
+          "created_at": "2023-06-07T16:21:11+02:00",
+          "removed_at": "2023-06-09T14:37:43+02:00"
+        },
+        {
+          "repo_full_name": "nasa/CrisisMappingToolkit",
+          "_path": "cmt/modis/misc_algorithms.py",
+          "matched_expression": "this is a hack",
+          "created_at": "2015-03-25T13:39:31-07:00",
+          "removed_at": "2015-03-25T14:15:28-07:00"
+        },
+        {
+          "repo_full_name": "alineacms/alinea",
+          "_path": "apps/example-next/.next/static/chunks/fallback/amp.js",
+          "matched_expression": "workaround for now",
+          "created_at": "2025-11-05T16:01:38+01:00",
+          "removed_at": "2025-11-05T16:06:26+01:00"
+        },
+        {
+          "repo_full_name": "cameron314/concurrentqueue",
+          "_path": "benchmarks/dlib/matrix/matrix_data_layout.h",
+          "matched_expression": "this is a hack",
+          "created_at": "2020-11-07T17:46:10+00:00",
+          "removed_at": "2020-11-08T08:36:14+00:00"
+        },
+        {
+          "repo_full_name": "mscdex/ssh2",
+          "_path": "examples/server-chat.js",
+          "matched_expression": "this is a hack",
+          "created_at": "2015-03-31T22:31:45-04:00",
+          "removed_at": "2015-04-02T00:03:05-04:00"
+        },
+        {
+          "repo_full_name": "datachecks/dcs-core",
+          "_path": "datachecks/report/static/index.js",
+          "matched_expression": "workaround for now",
+          "created_at": "2023-10-11T23:00:03+05:30",
+          "removed_at": "2023-10-15T09:34:19+05:30"
+        }
+      ],
+      "note": "O schema (Tabela 3.5) NÃO retém o SHA do commit de remoção, só `removed_at` (timestamp). Isso é uma limitação estrutural para checagens Zampetti pós-hoc: para saber se a remoção foi textual genuína ou deleção do arquivo inteiro, é preciso re-rodar `git log --all -S <expr> -- <path>` no clone e localizar o commit próximo de removed_at, depois `git diff-tree --no-commit-id --name-status -r <sha> -- <path>` (status D = arquivo inteiro deletado -> deveria ter sido censura, não remoção; status M = edição real -> remoção genuína). Ver função live_check_removal_validity() abaixo para a implementação."
+    }
+  ]
+}

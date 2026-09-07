@@ -1,0 +1,17 @@
+anotador,item_id,repo_full_name,artifact_type,matched_expression,is_ubw_original,is_ubw_final
+Bruno,FreeRDP/FreeRDP|pr_body|1901|dirty workaround,FreeRDP/FreeRDP,pr_body,dirty workaround,False,True
+Bruno,OpenTenBase/TXSQL|commit_message|94b9b751f6c27a8ab9a667d55d46e238f0e9ccc1|temporary fix,OpenTenBase/TXSQL,commit_message,temporary fix,False,True
+Bruno,eclipse-aspectj/aspectj|code_comment|org.aspectj.ajdt.core/src/main/java/org/aspectj/ajdt/internal/compiler/ast/AspectDeclaration.java:469|dirty hack,eclipse-aspectj/aspectj,code_comment,dirty hack,False,True
+Bruno,invoke-ai/InvokeAI|commit_message|04b96dd7b447e3da8299692a48441e720f4bd475|quick and dirty,invoke-ai/InvokeAI,commit_message,quick and dirty,False,True
+Bruno,winnow-rs/winnow|commit_message|c8e434bf50dfd9d3c057c6645bb59d5aeb389220|quick and dirty,winnow-rs/winnow,commit_message,quick and dirty,True,False
+Miguel,Art4/json-api-client|commit_message|83bddb0ae30186ac012f9a0eb6fd2a51dcfae9db|temporary fix,Art4/json-api-client,commit_message,temporary fix,False,True
+Miguel,BluePilotDev/bluepilot|commit_message|5f3569faf21f213d44c3729d93ebbc5c80bbcfce|temp fix,BluePilotDev/bluepilot,commit_message,temp fix,False,True
+Miguel,E3SM-Project/E3SM|commit_message|75cddcf7981f6410ad3a64cc1bca5e8c2df3b422|temporary fix,E3SM-Project/E3SM,commit_message,temporary fix,False,True
+Miguel,OpenAPITools/openapi-generator|pr_body|19470|quick and dirty,OpenAPITools/openapi-generator,pr_body,quick and dirty,True,False
+Miguel,OpenAssetIO/OpenAssetIO|pr_body|750|quick and dirty,OpenAssetIO/OpenAssetIO,pr_body,quick and dirty,True,False
+Miguel,TASEmulators/fceux|code_comment|src/state.cpp:84|dirty hack,TASEmulators/fceux,code_comment,dirty hack,False,True
+Miguel,bpftrace/bpftrace|commit_message|842fa60fd41cadf9d2c469ed0e8e03160fff70fd|temporary fix,bpftrace/bpftrace,commit_message,temporary fix,False,True
+Miguel,bwmarrin/discordgo|pr_body|959|quick and dirty,bwmarrin/discordgo,pr_body,quick and dirty,True,False
+Miguel,invoke-ai/InvokeAI|commit_message|04b96dd7b447e3da8299692a48441e720f4bd475|quick and dirty,invoke-ai/InvokeAI,commit_message,quick and dirty,True,False
+Miguel,purescript/purescript|commit_message|0177f717990911ede5ebe8ad7b0f520ad99383bf|temporary fix,purescript/purescript,commit_message,temporary fix,True,False
+Miguel,sunnypilot/sunnypilot|commit_message|784e1d665880f65b46cfe3c0c242fe71e22f4a2e|temp fix,sunnypilot/sunnypilot,commit_message,temp fix,False,True

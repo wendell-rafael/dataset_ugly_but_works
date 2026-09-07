@@ -1,0 +1,25 @@
+juiz,matched_expression,n,negativos_humanos,decididos,acuracia,conc_negativos,mcc,kappa
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,(outros),18,3,18,0.8333333333333334,0.0,,0.0
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,dirty hack,11,1,11,0.9090909090909091,0.0,,0.0
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,quick and dirty,22,3,22,0.8636363636363636,1.0,0.6488856845230502,0.5925925925925927
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,stopgap,24,4,24,0.9166666666666666,1.0,0.7745966692414834,0.7499999999999999
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,temp fix,24,4,24,0.9166666666666666,0.5,0.674199862463242,0.625
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,temporary fix,68,8,67,0.9104477611940298,0.5,0.5293112673169,0.5225653206650829
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,this is a hack,14,1,14,1.0,1.0,1.0,1.0
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,ugly hack,19,3,19,0.8947368421052632,0.3333333333333333,0.5443310539518174,0.4571428571428573
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,(outros),18,3,18,0.8333333333333334,0.0,,0.0
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,dirty hack,11,1,11,0.9090909090909091,0.0,,0.0
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,quick and dirty,22,3,22,0.8181818181818182,0.6666666666666666,0.4166305453899284,0.3972602739726031
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,stopgap,24,4,24,0.875,1.0,0.6969320524371696,0.6538461538461537
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,temp fix,24,4,24,0.9166666666666666,0.5,0.674199862463242,0.625
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,temporary fix,68,8,67,0.9104477611940298,0.5,0.5293112673169,0.5225653206650829
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,this is a hack,14,1,14,1.0,1.0,1.0,1.0
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,ugly hack,19,3,19,0.9473684210526315,0.6666666666666666,0.7921180343813395,0.7710843373493975
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,(outros),18,3,18,0.8333333333333334,0.0,,0.0
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,dirty hack,11,1,11,0.9090909090909091,0.0,,0.0
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,quick and dirty,22,3,22,0.9090909090909091,0.6666666666666666,0.6140350877192983,0.6140350877192982
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,stopgap,24,4,24,0.9166666666666666,1.0,0.7745966692414834,0.7499999999999999
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,temp fix,24,4,23,0.8260869565217391,0.75,0.5110997067272864,0.49450549450549464
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,temporary fix,68,8,67,0.9104477611940298,0.5,0.5293112673169,0.5225653206650829
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,this is a hack,14,1,14,1.0,1.0,1.0,1.0
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,ugly hack,19,3,19,0.8947368421052632,0.3333333333333333,0.5443310539518174,0.4571428571428573

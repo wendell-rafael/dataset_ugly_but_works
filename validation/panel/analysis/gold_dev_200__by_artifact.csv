@@ -1,0 +1,10 @@
+juiz,artifact_type,n,negativos_humanos,decididos,acuracia,conc_negativos,mcc,kappa
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,code_comment,57,1,57,1.0,1.0,1.0,1.0
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,commit_message,95,17,94,0.851063829787234,0.47058823529411764,0.45228325829795685,0.4465937762825904
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed,pr_body,48,9,48,0.8958333333333334,0.6666666666666666,0.6445033866354896,0.6428571428571429
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,code_comment,57,1,57,1.0,1.0,1.0,1.0
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,commit_message,95,17,94,0.8297872340425532,0.4117647058823529,0.3722180487310869,0.3675357443229603
+meta_llama_llama_3_3_70b_instruct_fewshot_fixed_nocat,pr_body,48,9,48,0.9166666666666666,0.7777777777777778,0.7264957264957265,0.7264957264957264
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,code_comment,57,1,57,0.9824561403508771,1.0,0.7007648882267351,0.6586826347305383
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,commit_message,95,17,93,0.8387096774193549,0.47058823529411764,0.42329359447404646,0.42044038221852936
+meta_llama_llama_3_3_70b_instruct_fewshot_retrieved_k2,pr_body,48,9,48,0.9166666666666666,0.6666666666666666,0.7089049543158458,0.7009345794392522

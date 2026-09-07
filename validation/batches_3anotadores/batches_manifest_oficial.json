@@ -1,0 +1,34 @@
+{
+  "label": "oficial",
+  "annotators": [
+    "Wendell",
+    "Miguel",
+    "Bruno"
+  ],
+  "seed": 42,
+  "protocolo": "calibracao_medicao_paralelizacao_redundante_2026-08-10",
+  "medicao_n": 200,
+  "paralelizacao_n": 185,
+  "files": {
+    "Wendell": {
+      "calibracao": "../validation/batches_3anotadores/batch_Wendell_calibracao_oficial.csv",
+      "plena": "../validation/batches_3anotadores/batch_Wendell_plena_oficial.csv",
+      "n_medicao_compartilhado": 200,
+      "n_paralelizacao_compartilhado": 185
+    },
+    "Miguel": {
+      "calibracao": "../validation/batches_3anotadores/batch_Miguel_calibracao_oficial.csv",
+      "plena": "../validation/batches_3anotadores/batch_Miguel_plena_oficial.csv",
+      "n_medicao_compartilhado": 200,
+      "n_paralelizacao_compartilhado": 185
+    },
+    "Bruno": {
+      "calibracao": "../validation/batches_3anotadores/batch_Bruno_calibracao_oficial.csv",
+      "plena": "../validation/batches_3anotadores/batch_Bruno_plena_oficial.csv",
+      "n_medicao_compartilhado": 200,
+      "n_paralelizacao_compartilhado": 185
+    }
+  },
+  "internal_stratum_map": "../validation/batches_3anotadores/_internal_stratum_map_oficial.csv",
+  "n_calibracao": 200
+}

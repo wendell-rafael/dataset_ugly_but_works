@@ -1,0 +1,24 @@
+{
+  "n_itens": 269,
+  "anotadores": [
+    "Wendell",
+    "Bruno",
+    "Miguel"
+  ],
+  "cenario_oficial": null,
+  "kappa_fleiss_recebido": 0.8159444329255643,
+  "kappa_fleiss_pre_ajuste": 0.7554016020783708,
+  "ac1_recebido": 0.967998644529722,
+  "precisao_lexico": 0.9182156133828996,
+  "ic95_wilson": [
+    0.8792814453120849,
+    0.9453728596032945
+  ],
+  "precisao_independe_do_ajuste": true,
+  "ajuste_bruno_itens": [
+    "cc0002",
+    "cc0020",
+    "cc0049"
+  ],
+  "proveniencia_do_ajuste": "NAO CONFIRMADA -- ver anotacoes/PROVENIENCIA.md"
+}

@@ -1,0 +1,99 @@
+{
+  "script": "06_export_publishable.py",
+  "script_version": "1.0.0",
+  "generated_at_utc": "2026-07-27T14:32:10.630228+00:00",
+  "input_file": "../data/full_run/ubw_collected_full.csv",
+  "input_row_count": 73405,
+  "rows_by_artifact_type": {
+    "commit_message": 27185,
+    "issue_body": 15540,
+    "pr_body": 14504,
+    "code_comment": 16176
+  },
+  "rows_with_any_pii_in_body_text": 9217,
+  "rows_with_pii_by_artifact_type": {
+    "pr_body": 2064,
+    "commit_message": 3906,
+    "issue_body": 2651,
+    "code_comment": 596
+  },
+  "pii_counts_by_label": {
+    "coauthor_trailer": 15159,
+    "email": 7949,
+    "mention": 18518,
+    "private_key": 4,
+    "signedoff_trailer": 8091,
+    "token_aws_access_key_id": 9,
+    "token_generic_bearer": 4,
+    "token_github_pat_classic": 1,
+    "token_jwt": 29,
+    "url_credential": 61
+  },
+  "examples_truncated": {
+    "mention": [
+      "@0no-co",
+      "@0no-co",
+      "@gql",
+      "@gql",
+      "@Dominik1999"
+    ],
+    "coauthor_trailer": [
+      "\r\nCo-authored-by: <redigido>",
+      "Co-authored-by: <redigido>",
+      "Co-authored-by: <redigido>",
+      "\r\nCo-authored-by: <redigido>",
+      "Co-authored-by: <redigido>"
+    ],
+    "signedoff_trailer": [
+      "\r\nSigned-off-by: <redigido>",
+      "\r\nSigned-off-by: <redigido>",
+      "\r\nSigned-off-by: <redigido>",
+      "\r\nSigned-off-by: <redigido>",
+      "\r\nSigned-off-by: <redigido>"
+    ],
+    "email": [
+      "je…@10up.com",
+      "wi…@blackhats.net.au",
+      "rs…@swtch.com",
+      "gm…@gmail.com",
+      "gm…@gmail.com"
+    ],
+    "url_credential": [
+      "https://<credencial_redigida>@localhost:20443…",
+      "dvrip://<credencial_redigida>@192.168.1.21:34567?chann…",
+      "dvrip://<credencial_redigida>@192.168.1.21:34567?chann…",
+      "http://<credencial_redigida>@localhost:15984…",
+      "http://<credencial_redigida>@localhost:15984…"
+    ],
+    "token_aws_access_key_id": [
+      "AKIA5Q…(len=20)",
+      "AKIA5Q…(len=20)",
+      "AKIA5Q…(len=20)",
+      "AKIA5Q…(len=20)",
+      "AKIA5Q…(len=20)"
+    ],
+    "token_generic_bearer": [
+      "Bearer…(len=43)",
+      "Bearer…(len=43)",
+      "Bearer…(len=20)",
+      "Bearer…(len=24)"
+    ],
+    "token_jwt": [
+      "eyJ0eX…(len=299)",
+      "eyJhbG…(len=101)",
+      "eyJhbG…(len=149)",
+      "eyJhbG…(len=149)",
+      "eyJ2Ij…(len=505)"
+    ],
+    "private_key": [
+      "-----BEGIN ... PRIVATE KEY----- <conteúdo redigido>",
+      "-----BEGIN ... PRIVATE KEY----- <conteúdo redigido>",
+      "-----BEGIN ... PRIVATE KEY----- <conteúdo redigido>",
+      "-----BEGIN ... PRIVATE KEY----- <conteúdo redigido>"
+    ],
+    "token_github_pat_classic": [
+      "ghp_xx…(len=33)"
+    ]
+  },
+  "note": "Varredura sobre o arquivo informado apenas -- se a coleta ainda estiver rodando (sem sentinela de conclusao), estes numeros sao PARCIAIS, nao o corpus final."
+}
