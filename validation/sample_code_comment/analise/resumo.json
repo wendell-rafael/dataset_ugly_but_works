@@ -5,7 +5,7 @@
     "Bruno",
     "Miguel"
   ],
-  "cenario_oficial": null,
+  "cenario_oficial": "recebido",
   "kappa_fleiss_recebido": 0.8159444329255643,
   "kappa_fleiss_pre_ajuste": 0.7554016020783708,
   "ac1_recebido": 0.967998644529722,
@@ -20,5 +20,5 @@
     "cc0020",
     "cc0049"
   ],
-  "proveniencia_do_ajuste": "NAO CONFIRMADA -- ver anotacoes/PROVENIENCIA.md"
+  "proveniencia_do_ajuste": "bug de exportacao da ferramenta, registrado em 2026-09-07; causa declarada e nao verificada -- ver anotacoes/PROVENIENCIA.md"
 }
