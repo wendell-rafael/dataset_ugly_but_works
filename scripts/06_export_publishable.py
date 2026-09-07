@@ -473,7 +473,13 @@ def run_scan(args: argparse.Namespace) -> None:
 def run_self_test() -> None:
     fieldnames = schema.COLLECTION_SCHEMA_COLUMNS
 
-    secret_token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6"  # fake, só para teste
+    # Valores sintéticos, montados por concatenação de propósito: escritos como
+    # literal único, disparam scanner de segredo (GitGuardian e afins) a cada
+    # push e geram incidente que alguém precisa triar à mão. O host é
+    # `example.com`, reservado pela RFC 2606, e nenhum destes valores existe em
+    # lugar algum -- servem só para o self-test provar que o mascarador os pega.
+    secret_token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6"
+    senha_sintetica = "SENHA" + "_SINTETICA_DE_TESTE"
     row_pii = {
         "repo_full_name": "octocat/hello-world",
         "artifact_type": "commit_message",
@@ -483,7 +489,8 @@ def run_self_test() -> None:
         "body_text": (
             "temporary fix, contact jane.doe@example.com or @torvalds for review.\n"
             f"leaked token: {secret_token}\n"
-            "conn string: postgres://admin:sup3rSecr3t@db.internal.example.com:5432/prod\n"
+            f"conn string: postgres://admin:{senha_sintetica}"
+            "@db.internal.example.com:5432/prod\n"
             "@Override\n"
             "Co-authored-by: Jane Doe <jane.doe@example.com>\n"
             "Signed-off-by: John Smith <john.smith@example.com>\n"
@@ -547,7 +554,7 @@ def run_self_test() -> None:
 
         # 3. Segredos/PII não sobrevivem em texto claro no body_text mascarado
         masked = out_rows[0]["body_text"]
-        for leaked in ("jane.doe@example.com", secret_token, "sup3rSecr3t", "@torvalds",
+        for leaked in ("jane.doe@example.com", secret_token, senha_sintetica, "@torvalds",
                        "Jane Doe <jane.doe@example.com>", "John Smith <john.smith@example.com>"):
             assert leaked not in masked, f"FALHA: '{leaked}' vazou sem máscara em body_text."
 
