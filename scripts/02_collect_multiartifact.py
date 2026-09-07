@@ -343,18 +343,27 @@ def _drop_as_path_false_positive(expression: str, text: str) -> bool:
 # Artefatos de bots (dependabot/renovate) citam o CHANGELOG de uma
 # dependência de terceiro no body — a "admissão" é do autor da dependência,
 # não do time do repositório, mesma classe de contaminação do vendoring.
+#
+# Achado real (auditoria de validação, 2026-07-27): a lista fechada de nomes
+# exatos deixava passar 715 registros (0,97% do corpus parcial), dos quais
+# 277 só de `pyup-bot` — que não tem `[bot]` no login nem está na lista
+# exata. Trocado para sufixo (`-bot`, `-robot`), que cobre a convenção real
+# de nomenclatura de bots no ecossistema GitHub sem precisar enumerar cada
+# um. Mantém a lista exata para bots cujo nome não segue esse padrão.
 _BOT_LOGIN_EXACT = {"dependabot", "renovate", "github-actions", "greenkeeper", "snyk-bot", "pull"}
+_BOT_LOGIN_SUFFIXES = ("-bot", "-robot")
 
 
 def _is_bot_login(login: Optional[str]) -> bool:
     if not login:
         return False
     lowered = login.lower()
-    return "[bot]" in lowered or lowered in _BOT_LOGIN_EXACT
+    return "[bot]" in lowered or lowered in _BOT_LOGIN_EXACT or lowered.endswith(_BOT_LOGIN_SUFFIXES)
 
 
 def _passes_content_filters(expression: str, text: str, author_login: Optional[str],
-                            artifact_type: str, artifact_ref: str, repo_full_name: str) -> bool:
+                            artifact_type: str, artifact_ref: str, repo_full_name: str,
+                            author_name: Optional[str] = None) -> bool:
     """Aplica os filtros de precisão da rodada final a um item da Search
     API, com log do motivo do descarte:
 
@@ -362,9 +371,15 @@ def _passes_content_filters(expression: str, text: str, author_login: Optional[s
     2. frase do léxico ausente do corpo (a API casa com stemming e com
        conteúdo truncado de changelog) — ver lexicon.expression_in_text;
     3. todas as ocorrências em contexto de path (expressões de 1 palavra).
+
+    `author_name` é checado além de `author_login` porque `commit_message`
+    tem nome de autor do próprio commit git (sempre presente) mas só tem
+    `login` do GitHub quando a conta está vinculada — um bot sem conta
+    vinculada só aparece no nome, não no login (achado real, ver nota acima).
     """
-    if _is_bot_login(author_login):
-        logger.info("  [%s] descartado (autor bot %s) em %s %s", artifact_type, author_login, repo_full_name, artifact_ref)
+    if _is_bot_login(author_login) or _is_bot_login(author_name):
+        bot_id = author_login if _is_bot_login(author_login) else author_name
+        logger.info("  [%s] descartado (autor bot %s) em %s %s", artifact_type, bot_id, repo_full_name, artifact_ref)
         return False
     if not lexicon.expression_in_text(expression, text):
         logger.info(
@@ -443,9 +458,11 @@ def _build_commit_record(item: dict, repo: dict, expression: str, category: str)
     committer_date = parse_iso_datetime(commit_info.get("committer", {}).get("date"))
     message = commit_info.get("message", "").strip()
     author_login = (item.get("author") or {}).get("login")
+    author_name = commit_info.get("author", {}).get("name")
     if not _passes_content_filters(
         expression, message, author_login,
         "commit_message", f"@{(item.get('sha') or '')[:10]}", repo["repo_full_name"],
+        author_name=author_name,
     ):
         return None
 
