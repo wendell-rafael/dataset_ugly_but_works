@@ -13,6 +13,16 @@ data/
 # launch.json é compartilhável e fica versionado; settings.local.json não.
 .claude/settings.local.json
 
+# Plano de orquestração de validação via Cowork — documento de trabalho
+# efêmero (quem-faz-o-quê), não faz parte da infra versionada do dataset.
+PLANO_VALIDACAO_COWORK.md
+
+# Amostras/batches de rodadas superadas por decisão de reunião (categoria
+# como dimensão analítica abandonada, issue_body removido) e execuções de
+# dryrun/calibracao_processo — histórico local, nunca preenchidas por
+# anotador, não faz parte da infra versionada.
+validation/archive/
+
 # Python
 __pycache__/
 *.pyc

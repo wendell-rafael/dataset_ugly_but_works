@@ -218,7 +218,7 @@ Para estimar a precisão bruta do léxico, uma amostra é extraída dos candidat
 
 ### 5.2 Tamanho da amostra
 
-O tamanho segue o critério padrão da área: 95% de confiança com margem de erro de 5%, que converge para aproximadamente 385 itens para populações acima de 5.000. Esse critério foi usado por Bavota & Russo (2016) e por Pham et al. (2025). A amostra é estratificada por categoria (A, B, C) e por tipo de artefato.
+O tamanho segue a fórmula de Cochran, 95% de confiança e margem de erro de 5%, que dá n₀ = 384-385 antes de qualquer correção. Com a correção de população finita, o valor exato depende do tamanho da população de referência, mas se estabiliza perto de 385 assim que essa população passa de algumas dezenas de milhares: Bavota & Russo (2016) usaram 366 itens sobre uma população de 7.584 comentários SATD confirmados; Pham et al. (2025) usaram 374 e 376 sobre populações de 13.044 e 16.125, arredondando os dois para 385 por consistência entre os subconjuntos. Para o nosso corpus, na faixa de 90 a 120 mil registros, a correção dá 384. A amostra é estratificada por categoria (A, B, C) e por tipo de artefato.
 
 ### 5.3 Time de anotação
 
@@ -287,7 +287,7 @@ O classificador LLM reduz o volume que chega à anotação humana, mas não subs
 | Remoção acidental → censura | Evita contaminação da taxa de remoção | Zampetti et al. (2018) | 20–50% das remoções de SATD são acidentais (deleção de arquivo inteiro); tratá-las como evento distorceria hazard ratios. |
 | Precisão bruta medida antes do LLM | Separa precisão léxica da precisão do pipeline | — | Permite avaliar contribuição independente do filtro léxico e da triagem automática. |
 | Kappa + Gwet's AC1 | Robusto a desbalanceamento de classes | Gwet (2008); Wongpakaran et al. (2013) | Corpora SATD têm maioria de instâncias não-SATD; kappa paradox pode subestimar concordância real. |
-| ~385 itens estratificados | Confiança de 95%, margem de 5% | Bavota & Russo (2016); Pham et al. (2025) | Tamanho padrão de amostra para validação manual na área. |
+| ~385 itens estratificados (384, com correção de população finita) | Confiança de 95%, margem de 5% | Bavota & Russo (2016); Pham et al. (2025) | Fórmula de Cochran com correção de população finita; o valor exato varia com o tamanho da população de referência (366 a 385 nos dois precedentes citados), estabilizando-se perto de 385 acima de dezenas de milhares de itens, faixa em que nosso corpus se encontra. |
 | LLM como pré-triagem apenas | Não substitui anotadores humanos | — | Presença de incertezas semânticas nas categorias B e C exige julgamento humano contextual. |
 | Pipeline KM → log-rank → Cox (futuro) | Análise de sobrevivência em três camadas | Li et al. (2021) | Pipeline validado empiricamente para SATD; distingue diferenças entre grupos antes de modelar covariáveis. |
 | ≥ 10 eventos por covariável no Cox | EPV rule | Peduzzi et al. (1996) | Estudo de simulação Monte Carlo; abaixo desse limiar os coeficientes são instáveis e viiesados. |

@@ -11,13 +11,17 @@ coletado automaticamente (via léxico, Seção 3.2) é de fato uma instância de
 resignação funcional**: um(a) desenvolvedor(a) admitindo, no próprio texto, que manteve
 uma solução tecnicamente subótima porque ela cumpre a função.
 
-Cada item anotado recebe **três rótulos independentes**:
+Cada item anotado recebe **dois rótulos independentes**:
 
 | Rótulo | Domínio | Descrição |
 |---|---|---|
 | `is_ubw` | booleano | O item é genuinamente uma instância de UBW? |
-| `category_confirmed` | `A`, `B`, `C` ou `"não classificável"` | Categoria semântica confirmada pelo(a) anotador(a), lendo o contexto completo (não apenas a expressão isolada) |
 | `confidence` | `certo`, `provável`, `incerto` | Grau de confiança na própria decisão |
+
+**Nota importante:** A categorização semântica (A, B, C) ainda aparece como `category_ubw` no
+CSV — trata-se de metadados de proveniência do léxico, **não de uma tarefa de anotação**. O(a)
+anotador(a) não classifica nem confirma categoria; a coluna serve apenas para rastreabilidade
+do léxico (Seção 3.2 do plano de experimento).
 
 **O que este guideline NÃO faz:** substituir julgamento humano por regras mecânicas. As
 regras abaixo existem para reduzir divergência arbitrária entre anotadores, não para
@@ -42,21 +46,33 @@ referência (*ground truth*) contra a qual o léxico e o LLM são avaliados.
 
 ## 3. Processo (Seção 5.4)
 
+Protocolo de três anotadores com duas fases:
+
 1. **Leitura deste guideline**, incluindo todos os exemplos da Seção 6.
-2. **Calibração:** 50 itens por tipo de artefato (`code_comment`, `commit_message`,
-   `issue_body`, `pr_body`) anotados **de forma independente** por todos os anotadores,
-   seguidos de uma sessão de discussão conjunta sobre os casos em que houve divergência.
+
+2. **Calibração (200 itens):** estratificado por tipo de artefato. Cada um dos três
+   anotadores preenche de forma **independente**, sem trocar ideias. Quando os três
+   terminarem, marcamos uma sessão de discussão conjunta para os casos com divergência.
+   O objetivo é alinhar critério — essa discussão quebra a independência, então os itens de
+   calibração são excluídos de todas as métricas de concordância/precisão (validação posterior).
    Awon (2024) obteve κ = 0,926 com esse protocolo; Maldonado & Shihab (2015) reportam
-   redução de até 30% nas divergências residuais após uma etapa de calibração.
-3. **Anotação plena** da amostra estratificada (Seção 5.2), de forma independente,
-   sem consultar os outros anotadores. Divergências são resolvidas **depois**, por
-   consenso ou por um terceiro anotador (desempate — ver Seção 7).
-4. Cálculo de concordância (κ de Cohen e AC1 de Gwet — Seção 5.5, script
-   `03_metrics_llm_triage.py metrics`).
+   redução de até 30% nas divergências residuais.
+
+3. **Medição (200 itens, os mesmos três anotadores):** preenchido de forma **independente**
+   novamente, sem consultar os colegas **e sem discussão posterior**. Essas 200 respostas são
+   as que medem concordância (κ de Cohen e AC1 de Gwet) entre os três anotadores.
+
+4. **Paralelização (restante da amostra):** cada um dos três anotadores cobre um pedaço
+   não-sobreposto (sem consultar os outros). A confiabilidade desses rótulos únicos já foi
+   validada na etapa de medição — se a concordância ali foi alta, é seguro confiar em um
+   único anotador para os itens de paralelização.
+
+5. Cálculo de concordância (κ de Cohen e AC1 de Gwet) sobre os itens de medição apenas
+   (script `03d_precision_report.py report`).
 
 **Regra dura:** nunca altere seu próprio rótulo depois de ver o rótulo de outro
-anotador, exceto na sessão de discussão explícita da etapa de calibração. Fazer isso
-durante a anotação plena invalida a medição de concordância.
+anotador, exceto na discussão de calibração (que é explícita e coletiva). Fazer isso
+durante medição ou paralelização invalida a medição de concordância.
 
 ---
 
@@ -72,6 +88,16 @@ Um item é `is_ubw = True` **somente se todas** as condições abaixo forem sati
    "provisório") com o fato de que ela funciona / resolve o problema / não será mexida.
    Não basta admitir que o código é ruim — é preciso haver, no mesmo trecho, a
    resignação de mantê-lo assim mesmo.
+
+   **Marcador puramente temporal conta como satisfazendo esta condição.** Um trecho
+   como "temporary fix for X" ou "temp fix", sem nenhum outro juízo de qualidade,
+   já expressa o trade-off: a pessoa admite que a solução não é a definitiva e a
+   introduz mesmo assim, porque resolve o problema agora. Decisão registrada em
+   2026-08-19, após observar que essa foi a leitura praticada de forma consistente
+   pelos três anotadores na amostra oficial (prevalência de 92,2% de `True`,
+   incluindo os itens só-temporais). Esta nota resolve a divergência entre o texto
+   original desta condição — mais estrito, exigindo resignação explícita além do
+   marcador temporal — e a prática de anotação já realizada.
 3. **Referência concreta a código/design real neste repositório.** Deve haver um
    deítico (este método, esta função, aqui, essa linha, esse PR) ligando a afirmação a
    uma instância real de código — não uma reflexão genérica sobre a profissão.
@@ -84,11 +110,16 @@ Se qualquer uma dessas condições falhar → `is_ubw = False`.
 
 ---
 
-## 5. Definições operacionais das categorias (A, B, C)
+## 5. Contexto — Como as categorias surgiram no léxico (referência apenas)
 
-> Referência lexical completa: Seção 3.2 do plano. Aqui, o critério é o **traço
-> dominante do argumento do autor**, não apenas qual palavra do léxico disparou a
-> coleta — ver regras de desempate na Seção 7 quando os dois divergem.
+> **IMPORTANTE:** As categorias A, B, C descritas abaixo **não são uma tarefa de anotação**.
+> Elas existem no léxico (Seção 3.2 do plano) porque ajudaram a organizar a construção do
+> léxico lexicográfico. A coluna `category_ubw` que aparece no CSV é metadados — o(a)
+> anotador(a) não confirma nem classifica categoria. Esta seção é para referência apenas,
+> para que você entenda melhor o que a expressão matched no seu item tenta capturar.
+>
+> Referência lexical completa: Seção 3.2 do plano. O critério é o **traço dominante do
+> argumento do autor**, não apenas qual palavra do léxico disparou a coleta.
 
 ### Categoria A — Julgamento estético e hacks explícitos
 **Traço dominante:** a crítica é sobre a *forma* do código (feio, hack, bagunçado),
@@ -140,7 +171,8 @@ a mesma expressão do léxico, para forçar o julgamento pelo contexto.
 def parse_legacy_xml(raw: bytes) -> dict:
     ...
 ```
-→ `is_ubw=True`, `category_confirmed=A`, `confidence=certo`
+→ `is_ubw=True`, `confidence=certo`
+(contexto: expressão do léxico Categoria A — forma estética — mas você não preenche isso)
 
 **`code_comment` — negativo (string de teste)**
 ```python
@@ -159,9 +191,8 @@ fix(auth): dirty hack to bypass token refresh race condition
 Not proud of this, but it stops the 500s in prod. Will revisit after
 the SSO migration.
 ```
-→ `is_ubw=True`, `category_confirmed=A` (mistura traços de A e B — ver Seção 7 para o
-desempate: aqui "dirty hack" é o núcleo da frase-título, e "will revisit" é um detalhe
-secundário no corpo → mantém A)
+→ `is_ubw=True`, `confidence=certo`
+(contexto: léxico marca como Categoria A, mas tem traços de B também — você não resolve isso)
 
 **`issue_body` — negativo (citação de terceiro)**
 ```
@@ -183,7 +214,8 @@ encontrado, usamos o frete médio nacional em vez de falhar o checkout.
 Sei que isso é só um workaround — a correção de verdade é revisar toda
 a integração com os Correios, que não cabe neste sprint.
 ```
-→ `is_ubw=True`, `category_confirmed=B`, `confidence=certo`
+→ `is_ubw=True`, `confidence=certo`
+(contexto: léxico marca como Categoria B — urgência/temporário)
 
 **`pr_body` — negativo (workaround de terceiro, fora do controle do autor)**
 ```
@@ -199,7 +231,8 @@ onde a própria lib usava um workaround feio para lidar com timezones.
 // pouco, tudo bem; se não, isso vira memory leak. Aceitável por agora.
 private static final Map<String, Object> cache = new HashMap<>();
 ```
-→ `is_ubw=True`, `category_confirmed=B`
+→ `is_ubw=True`, `confidence=certo`
+(contexto: léxico marca como Categoria B — urgência/temporário)
 
 **`commit_message` — negativo (negação)**
 ```
@@ -220,7 +253,8 @@ mantê-lo (condição 2 falha: não há resignação atual, há resolução)
 # ou 60s. Não mexer sem rodar a suíte de carga inteira.
 TIMEOUT_SECONDS = 30
 ```
-→ `is_ubw=True`, `category_confirmed=C`, `confidence=certo`
+→ `is_ubw=True`, `confidence=certo`
+(contexto: léxico marca como Categoria C — incerteza/resignação)
 
 **`code_comment` — positivo (magic number ⚠, caso de alto risco corretamente positivo)**
 ```c
@@ -228,9 +262,9 @@ TIMEOUT_SECONDS = 30
  * empiricamente lendo o firmware. Não temos a spec oficial do fabricante. */
 #define HEADER_OFFSET 0x4F2A
 ```
-→ `is_ubw=True`, `category_confirmed=C` — a admissão de incerteza ("descobrimos
-empiricamente", "não temos a spec") + resignação ("mas funciona") satisfazem as
-condições da Seção 4.
+→ `is_ubw=True`, `confidence=certo`
+(contexto: léxico marca como Categoria C — a admissão de incerteza "descobrimos
+empiricamente, não temos a spec" + resignação "mas funciona" satisfazem as condições)
 
 **`code_comment` — negativo (magic number ⚠, caso de alto risco corretamente negativo)**
 ```python
@@ -257,8 +291,9 @@ código, sem nenhuma admissão de que a solução é ruim ou incerta. Falha a co
 def legacy_discount_calculator(cart):
     ...
 ```
-→ `is_ubw=True`, `category_confirmed=C` — combina medo de regressão + incerteza sobre
-o sistema, o núcleo da Categoria C.
+→ `is_ubw=True`, `confidence=certo`
+(contexto: léxico marca como Categoria C — combina medo de regressão + incerteza sobre
+o sistema, o núcleo dessa categoria)
 
 **`issue_body` — negativo (uso não-técnico / genérico)**
 ```
@@ -272,43 +307,32 @@ não a código/design de software. Falha a condição 3 (sem referência a códi
 
 ---
 
-## 7. Regras de desempate para casos limítrofes
+## 7. Casos limítrofes em `is_ubw`
 
-Aplique nesta ordem. Pare na primeira regra que resolver o caso.
+**Se `is_ubw` está em dúvida**, aplique o teste das 5 condições da Seção 4 uma a uma,
+por escrito, no campo de observação (`observacao`) da planilha de anotação:
 
-1. **Categoria default = categoria léxica.** Se o trecho não deixar claro um traço
-   dominante diferente do previsto pela expressão que disparou a coleta
-   (`matched_expression` → `category_ubw` no schema), mantenha a categoria do léxico.
-   O anotador só sobrepõe essa categoria quando o *contexto* evidencia claramente outro
-   traço dominante (ex.: uma expressão da Categoria A usada dentro de uma frase cujo
-   argumento central é sobre prazo/urgência).
-2. **Quando dois traços aparecem com peso comparável**, use a seguinte precedência,
-   do mais para o menos verificável objetivamente:
-   **B (urgência/temporário) > A (estética explícita) > C (incerteza/resignação vaga).**
-   Justificativa: marcadores de urgência (“por enquanto”, “depois eu arrumo”, “TODO”)
-   são os mais facilmente identificáveis no texto; julgamentos estéticos exigem menos
-   inferência que estados de incerteza vagos, que são os mais subjetivos.
-3. **Se `is_ubw` está em dúvida** (não a categoria, mas se é UBW ou não), aplique o
-   teste das 5 condições da Seção 4 uma a uma, por escrito, no campo de observação da
-   planilha de anotação. Se alguma condição continuar ambígua após esse teste, marque
-   `confidence = incerto` e **não** `is_ubw = False` por padrão — deixe para a
-   discussão de calibração ou para o terceiro anotador decidir.
-4. **Terceiro anotador (desempate formal):** acionado quando os dois anotadores
-   primários divergem em `is_ubw` (discordância binária) OU quando ambos marcam
-   `is_ubw = True` mas divergem em `category_confirmed`. O terceiro anotador não vê os
-   rótulos anteriores antes de decidir, e sua decisão é final para aquele item —
-   registre isso separadamente do cálculo de κ/AC1 do par de anotadores primários
-   (o desempate não entra na métrica de concordância, apenas resolve o rótulo final do
-   item no dataset).
-5. **`category_confirmed = "não classificável"`** é reservado para os poucos casos em
-   que `is_ubw = True` é claro, mas o trecho genuinamente não expressa nenhum dos três
-   traços dominantes descritos na Seção 5 com clareza suficiente mesmo após discussão.
-   Use com parcimônia — um volume alto desse rótulo é sinal de que a taxonomia precisa
-   de revisão (reporte ao orientador, não altere o léxico unilateralmente).
-6. **Itens com o arquivo/issue/PR removidos ou inacessíveis no momento da anotação**
-   (ex.: PR de um fork deletado): anote com base no `body_text` capturado no CSV, que é
-   a fonte de verdade da coleta — não é necessário (nem sempre possível) acessar o
-   artefato ao vivo no GitHub.
+1. Auto-admissão — é a própria pessoa/equipe decidindo, não terceiros?
+2. Trade-off explícito — contrasta qualidade ruim com “mas funciona”?
+3. Referência concreta a código real — há um deítico (essa função, este método)?
+4. Sem negação — não é uma forma negada (“não é um hack”)?
+5. Não é ruído lexical — não está dentro de string de teste, fixture, citação?
+
+Se alguma condição continuar ambígua após esse checklist, marque `confidence = incerto`.
+Não pule diretamente para `is_ubw = False` por padrão.
+
+**Expressões de alto risco:** `magic number`, `don't touch`, `hope everything will work`
+
+Essas aparecem tanto em contextos positivos genuínos quanto em contextos descartáveis. Aplique
+sempre o teste das 5 condições — não confie só na palavra isolada.
+
+**Itens com arquivo/issue/PR removidos:** anote com base no `body_text` capturado no CSV
+(que é a fonte de verdade da coleta). Não é necessário acessar o artefato ao vivo no GitHub.
+
+**Contexto de categorias (referência apenas):** a coluna `category_ubw` mostra qual
+categoria do léxico disparou a coleta. Isso ajuda você a entender o tipo de traço que a
+expressão original tenta capturar — veja Seção 5 para referência — mas **você não confirma
+nem classifica categoria**. Use apenas para contexto.
 
 ---
 
@@ -328,28 +352,3 @@ Aplique nesta ordem. Pare na primeira regra que resolver o caso.
 - **Contexto de ±3 linhas pode não bastar** para `code_comment` (Tabela 3.5). Se o
   `body_text` capturado for insuficiente para aplicar as 5 condições da Seção 4, marque
   `confidence = incerto` em vez de adivinhar.
-
----
-
-## 9. Referência rápida (cheat sheet)
-
-```
-is_ubw = True  se e somente se:
-  [ ] autor fala da própria decisão (não de terceiros, não abstrato)
-  [ ] há trade-off explícito: "ruim/feio/provisório" + "mas funciona/fica assim"
-  [ ] referência concreta a código real deste repositório
-  [ ] sem negação
-  [ ] não é string literal / fixture / citação / nome de identificador
-
-category_confirmed:
-  A -> traço dominante é estética do código
-  B -> traço dominante é urgência/temporariedade
-  C -> traço dominante é incerteza sobre o sistema / medo de regressão
-  desempate de traço comparável -> B > A > C
-  categoria default quando ambíguo -> categoria léxica de matched_expression
-
-confidence:
-  certo     -> nenhuma condição exigiu inferência além do texto explícito
-  provável  -> pelo menos uma condição exigiu inferência razoável do contexto
-  incerto   -> aplicar regra de desempate #3 (Seção 7) e/ou terceiro anotador
-```

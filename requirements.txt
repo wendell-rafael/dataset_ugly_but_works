@@ -9,6 +9,14 @@ tqdm>=4.66  # barra de progresso da coleta (scripts/02_collect_multiartifact.py)
 # (Seção 5.6 — pré-triagem por LLM). Requer ANTHROPIC_API_KEY no ambiente.
 anthropic>=0.40
 
+# Painel de juízes LLM (scripts 07 e 08, validation/PLANO_EXPERIMENTO_LLM.md):
+# TF-IDF e cosseno da recuperação de exemplos few-shot, validação cruzada e
+# agregador treinado. Só o script 08 precisa do xgboost; sem ele o relatório
+# roda igual, apenas sem a linha do agregador treinado.
+scikit-learn>=1.4
+xgboost>=2.0
+tabulate>=0.9  # DataFrame.to_markdown() nos relatórios do script 08
+
 # Trabalho futuro (Seção 6 / Seção 8): análise de sobrevivência (RQ2).
 # Não é usado pelos três scripts de coleta desta fase, mas está listado
 # aqui porque já é a decisão metodológica registrada no plano.

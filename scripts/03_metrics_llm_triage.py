@@ -37,12 +37,15 @@ Exemplos:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import csv
 import json
 import logging
 import os
 import random
+import re
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -329,16 +332,179 @@ Responda ESTRITAMENTE em JSON, sem texto fora do JSON, no formato:
 """
 
 
-def build_llm_triage_prompt(candidate: dict) -> tuple[str, str]:
-    """Retorna (system_prompt, user_prompt) para um candidato do schema Tabela 3.5."""
-    user_prompt = LLM_TRIAGE_USER_PROMPT_TEMPLATE.format(
+# --- Prompt v2 (2026-08-11) — EXPERIMENTO REPROVADO, não é o default ---------
+# Hipótese testada: o v1 descreve a classe "não-UBW" apenas como ruído lexical
+# (string de teste, nome de variável, citação, negação), que é só a condição 5
+# das CINCO da definição operacional (ANNOTATION_GUIDELINE.md, Seção 4) — nunca
+# pede que o modelo verifique auto-admissão (cond. 1), resignação em manter
+# (cond. 2) nem referência a código real (cond. 3). O v2 abaixo transforma as
+# cinco condições em checklist explícito e adiciona exemplos negativos.
+#
+# Resultado: o v2 passou a rejeitar quase tudo (κ ≈ 0,00-0,03 contra o gabarito
+# humano, ver comentário em DEFAULT_PROMPT_VERSION). As justificativas geradas
+# são internamente coerentes — os modelos aplicam a condição 2 corretamente e
+# rejeitam "temporary fix for X" seco por não haver resignação explícita. Só que
+# os anotadores humanos aceitam esses casos (88% dos itens com "temporary fix"
+# na calibração vieram True). A conclusão não é "o prompt está errado": é que o
+# critério escrito no guideline é mais estrito do que o critério praticado.
+#
+# Mantido no código como registro do experimento e para reprodução. Mesmo padrão
+# de versionamento usado em 03c_generate_batches.py (`build` vs `build-v2`).
+
+LLM_TRIAGE_SYSTEM_PROMPT_V2 = """Você é um assistente de pesquisa em engenharia de \
+software empírica. Sua tarefa é decidir se um trecho de texto satisfaz uma definição \
+operacional estrita de "Ugly But It Works" (UBW).
+
+Contexto importante sobre como o item chegou até você: ele foi capturado por uma busca \
+automática por expressão literal. A presença da expressão NÃO é evidência a favor de \
+nada — ela é apenas o motivo de o item estar sendo avaliado. Muitos candidatos contêm a \
+expressão sem satisfazer a definição.
+
+Sua tarefa é DISCRIMINAR, não confirmar. Aplique a definição literalmente: se qualquer \
+uma das condições exigidas falhar, o rótulo é "não-UBW", mesmo que o trecho fale de \
+código ruim, de gambiarra ou de solução temporária. Você não substitui a anotação \
+humana — casos genuinamente indecidíveis vão para revisão."""
+
+LLM_TRIAGE_USER_PROMPT_TEMPLATE_V2 = """Um trecho é "UBW-verdadeiro" somente se TODAS as \
+cinco condições abaixo forem satisfeitas. Verifique uma a uma.
+
+1. AUTO-ADMISSÃO — quem escreve fala de uma decisão própria (ou da equipe, no mesmo \
+   repositório). Não vale descrever a prática de terceiros, código de dependência \
+   externa, nem reflexão genérica sobre engenharia de software.
+
+2. RESIGNAÇÃO EM MANTER — o trecho contrasta a qualidade da solução ("feio", "hack", \
+   "workaround", "não ideal", "provisório") com o fato de que ela funciona / resolve o \
+   problema / vai ficar como está.
+   ESTA É A CONDIÇÃO QUE MAIS FALHA. Admitir que algo é subótimo NÃO basta: é preciso \
+   haver, no mesmo trecho, a aceitação de conviver com aquilo. Em particular:
+   - "temporary fix for X", "quick fix for Y" sem nada além disso → FALHA. Anuncia um \
+     conserto, não expressa resignação em mantê-lo.
+   - trecho sobre REMOVER, substituir ou corrigir o workaround → FALHA (é resolução \
+     ativa, o oposto de resignação).
+   - trecho sobre EVITAR a má prática (ex.: "extraí para constante para evitar magic \
+     numbers") → FALHA (é o oposto de aceitar).
+
+3. REFERÊNCIA CONCRETA A CÓDIGO/DESIGN REAL — deve haver algo ligando a afirmação a uma \
+   instância real de código neste repositório (este método, esta função, aqui, este PR). \
+   Processo organizacional, fluxo de trabalho ou reflexão abstrata → FALHA.
+
+4. SEM NEGAÇÃO — "isto NÃO é um hack sujo" é o oposto de UBW → FALHA.
+
+5. SEM RUÍDO DE CORRESPONDÊNCIA LEXICAL — a expressão não pode estar dentro de string \
+   literal de teste, fixture, dado de teste, docstring de terceiros, citação de outra \
+   pessoa, nome de variável/função, ou uso não-técnico → FALHA.
+
+Exemplos de decisão (todos contêm expressão do léxico):
+
+[não-UBW] `assert str(exc.value) == "this is a hack, please fix your config"`
+  → falha a cond. 5: a expressão é conteúdo de dado de teste.
+
+[não-UBW] "O revisor comentou que a implementação anterior era 'a dirty hack', por isso \
+pedimos para refazer do zero."
+  → falha a cond. 2: a solução está sendo rejeitada e substituída, não mantida.
+
+[não-UBW] "Atualiza a dependência libfoo para 3.2.1, que corrige o bug onde a própria \
+lib usava um workaround feio para timezones."
+  → falha a cond. 1 e 2: workaround é de terceiro e está sendo removido.
+
+[não-UBW] "refactor(payments): remove duct tape fix from retry logic. Root cause fixed \
+in #1204, so we can finally delete this."
+  → falha a cond. 2: o trecho é sobre remover o workaround.
+
+[não-UBW] "O processo atual de onboarding não é ideal, mas funciona — vamos deixar como \
+está até o próximo trimestre."
+  → falha a cond. 3: é processo organizacional, não código.
+
+[UBW-verdadeiro] "// quick and dirty: cache em memória sem TTL. Se o processo reiniciar \
+pouco, tudo bem; se não, isso vira memory leak. Aceitável por agora."
+  → as cinco condições passam: decisão própria, subótima, mantida conscientemente, sobre \
+código real, sem negação nem ruído.
+
+[UBW-verdadeiro] "fix(auth): dirty hack to bypass token refresh race condition. Not \
+proud of this, but it stops the 500s in prod. Will revisit after the SSO migration."
+  → as cinco condições passam: admite a feiura e mantém porque funciona.
+
+Rótulos possíveis:
+- "UBW-verdadeiro": as cinco condições passam.
+- "não-UBW": pelo menos uma condição falha.
+- "incerto": o trecho está truncado, ilegível ou sem contexto suficiente para julgar \
+  alguma condição. NÃO use "incerto" apenas porque o caso é difícil — se der para \
+  aplicar a definição, aplique.
+
+Candidato:
+- Repositório: {repo_full_name}
+- Tipo de artefato: {artifact_type}
+- Expressão que disparou a coleta: "{matched_expression}"
+- Trecho:
+\"\"\"
+{body_text}
+\"\"\"
+
+Responda ESTRITAMENTE em JSON, sem texto fora do JSON:
+{{"label": "UBW-verdadeiro" | "não-UBW" | "incerto", "failed_condition": <número da \
+primeira condição que falhou, ou null se nenhuma falhou>, "rationale": "<justificativa \
+em até 2 frases>"}}
+"""
+
+# RESULTADO DA VALIDAÇÃO DO v2 (2026-08-11) — o v2 FALHOU e NÃO é o default.
+#
+# Medido contra o gabarito humano dos 200 itens de calibração (voto majoritário
+# dos 3 anotadores; 173 True / 27 False), rodando os dois prompts nos MESMOS
+# itens, mesmos modelos:
+#
+#   prompt  modelo          κ (itens decididos)   acurácia   negativos capturados
+#   v1      DeepSeek V3.2        0,408              89,4%        7 de 16
+#   v1      Qwen3 Coder          0,611              94,5%        7 de 15
+#   v2      DeepSeek V3.2        0,004              14,2%       22 de 22
+#   v2      Qwen3 Coder          0,027              24,7%       18 de 19
+#
+# O v2 aplica a condição 2 da definição operacional ("não basta admitir que é
+# ruim, precisa haver resignação em manter") ao pé da letra — e com isso rejeita
+# ~85% do que os anotadores humanos aceitam. As justificativas do modelo estão
+# internamente corretas; o problema é que o critério ESCRITO no guideline é mais
+# estrito do que o critério que os anotadores de fato aplicam. Isso é um achado
+# sobre o guideline (validade de construto), não um bug de prompt, e está
+# registrado em validation/METODOLOGIA_E_VALIDACAO_ORIENTADOR.md, Seção 10.1.
+#
+# O v1 fica como default. A fraqueza real dele é recall na classe negativa
+# (captura ~44% dos negativos), não concordância geral — a acurácia alta com κ
+# mais baixo é o paradoxo de prevalência de novo (86,5% da classe é positiva).
+# Qualquer prompt novo deve ser medido contra o mesmo conjunto de calibração
+# ANTES de rodar em escala; a calibração é conjunto de desenvolvimento legítimo
+# (já excluída por desenho de toda métrica oficial), e os 385 seguem intocados
+# como conjunto de teste.
+DEFAULT_PROMPT_VERSION = "v1"
+
+
+def build_llm_triage_prompt(candidate: dict, prompt_version: str = DEFAULT_PROMPT_VERSION) -> tuple[str, str]:
+    """Retorna (system_prompt, user_prompt) para um candidato do schema Tabela 3.5.
+
+    `prompt_version="v1"` reproduz a rodada documentada em
+    `validation/ensemble_medicao_200.csv`; `"v2"` (default) é o prompt
+    corrigido — ver comentário acima sobre o desbalanceamento do v1.
+    """
+    if prompt_version == "v1":
+        user_prompt = LLM_TRIAGE_USER_PROMPT_TEMPLATE.format(
+            repo_full_name=candidate.get("repo_full_name", ""),
+            artifact_type=candidate.get("artifact_type", ""),
+            category_ubw=candidate.get("category_ubw", ""),
+            matched_expression=candidate.get("matched_expression", ""),
+            body_text=(candidate.get("body_text") or "")[:2000],
+        )
+        return LLM_TRIAGE_SYSTEM_PROMPT, user_prompt
+    if prompt_version != "v2":
+        raise ValueError(f"prompt_version desconhecida: {prompt_version!r} (use 'v1' ou 'v2')")
+
+    # v2 NÃO passa `category_ubw`: é metadado da categorização lexical automática
+    # e funciona como sinal a favor do positivo ("o sistema já achou que é B"),
+    # justamente o viés que estamos tentando remover.
+    user_prompt = LLM_TRIAGE_USER_PROMPT_TEMPLATE_V2.format(
         repo_full_name=candidate.get("repo_full_name", ""),
         artifact_type=candidate.get("artifact_type", ""),
-        category_ubw=candidate.get("category_ubw", ""),
         matched_expression=candidate.get("matched_expression", ""),
         body_text=(candidate.get("body_text") or "")[:2000],
     )
-    return LLM_TRIAGE_SYSTEM_PROMPT, user_prompt
+    return LLM_TRIAGE_SYSTEM_PROMPT_V2, user_prompt
 
 
 VALID_LLM_LABELS = {"UBW-verdadeiro", "não-UBW", "incerto"}
@@ -356,17 +522,26 @@ def _parse_llm_json_label(raw_text: str) -> dict:
     label = parsed.get("label")
     if label not in VALID_LLM_LABELS:
         raise ValueError(f"Label fora do vocabulário esperado: {label!r}")
-    return {"label": label, "rationale": parsed.get("rationale", "")}
+    # `failed_condition` só existe no prompt v2 — qual das cinco condições da
+    # definição operacional reprovou. Serve para auditar POR QUE um item foi
+    # rejeitado, e para checar se o modelo está usando o critério todo ou só
+    # uma parte dele.
+    return {
+        "label": label,
+        "rationale": parsed.get("rationale", ""),
+        "failed_condition": parsed.get("failed_condition"),
+    }
 
 
-def classify_candidate_with_anthropic(client, candidate: dict, model: str, max_retries: int = 3) -> dict:
+def classify_candidate_with_anthropic(client, candidate: dict, model: str, max_retries: int = 3,
+                                       prompt_version: str = DEFAULT_PROMPT_VERSION) -> dict:
     """Chama a API da Anthropic para classificar um único candidato.
 
     Retorna {"label": ..., "rationale": ...}. Em caso de resposta
     malformada ou erro persistente, o label cai em "incerto" (fail-safe:
     prefere mandar para revisão humana a descartar silenciosamente).
     """
-    system_prompt, user_prompt = build_llm_triage_prompt(candidate)
+    system_prompt, user_prompt = build_llm_triage_prompt(candidate, prompt_version)
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -402,11 +577,12 @@ def classify_candidate_with_anthropic(client, candidate: dict, model: str, max_r
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
-def classify_candidate_with_openrouter(candidate: dict, model: str, api_key: str, max_retries: int = 3) -> dict:
+def classify_candidate_with_openrouter(candidate: dict, model: str, api_key: str, max_retries: int = 3,
+                                        prompt_version: str = DEFAULT_PROMPT_VERSION) -> dict:
     """Mesma tarefa de classify_candidate_with_anthropic, via OpenRouter."""
     import requests
 
-    system_prompt, user_prompt = build_llm_triage_prompt(candidate)
+    system_prompt, user_prompt = build_llm_triage_prompt(candidate, prompt_version)
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -437,7 +613,8 @@ def classify_candidate_with_openrouter(candidate: dict, model: str, api_key: str
     return {"label": "incerto", "rationale": "falha técnica na triagem automática"}
 
 
-def _build_classifier(provider: str, model: str, openrouter_api_key: Optional[str]):
+def _build_classifier(provider: str, model: str, openrouter_api_key: Optional[str],
+                       prompt_version: str = DEFAULT_PROMPT_VERSION):
     """Resolve o provedor e retorna a função `classify(candidate) -> dict`
     usada tanto por run_llm_triage quanto por run_llm_triage_incremental.
     """
@@ -452,7 +629,8 @@ def _build_classifier(provider: str, model: str, openrouter_api_key: Optional[st
         client = anthropic.Anthropic()  # lê ANTHROPIC_API_KEY do ambiente
 
         def classify(candidate: dict) -> dict:
-            return classify_candidate_with_anthropic(client, candidate, model=model)
+            return classify_candidate_with_anthropic(client, candidate, model=model,
+                                                      prompt_version=prompt_version)
 
     elif provider == "openrouter":
         api_key = openrouter_api_key or os.environ.get("OPENROUTER_API_KEY")
@@ -462,7 +640,8 @@ def _build_classifier(provider: str, model: str, openrouter_api_key: Optional[st
             )
 
         def classify(candidate: dict) -> dict:
-            return classify_candidate_with_openrouter(candidate, model=model, api_key=api_key)
+            return classify_candidate_with_openrouter(candidate, model=model, api_key=api_key,
+                                                       prompt_version=prompt_version)
 
     else:
         raise ValueError(f"Provedor desconhecido: {provider!r} (use 'anthropic' ou 'openrouter')")
@@ -612,6 +791,191 @@ def run_llm_triage_incremental(
     return out
 
 
+# ---------------------------------------------------------------------------
+# Triagem ensemble multi-modelo (Seção 5.6 estendida) — em vez de um único
+# modelo decidir, N modelos independentes classificam o mesmo candidato. Só
+# aceita direto quando TODOS concordam no binário UBW/não-UBW; qualquer
+# "incerto" ou divergência entre modelos força revisão humana, do mesmo jeito
+# que "incerto" sozinho já forçava no modo single-model. Ver A2 e A3 em
+# validation/ sobre por que diversidade de modelo (não só de rodada) reduz
+# viés sistemático correlacionado.
+# ---------------------------------------------------------------------------
+
+def _model_slug(provider: str, model: str) -> str:
+    """Nome de coluna estável para um modelo, usado como sufixo em
+    `llm_label__<slug>` / `llm_rationale__<slug>`."""
+    return re.sub(r"[^a-z0-9]+", "_", f"{provider}_{model}".lower()).strip("_")
+
+
+def _apply_ensemble_agreement(out: pd.DataFrame, label_cols: list[str]) -> pd.DataFrame:
+    """Deriva `ensemble_label` (unânime ou "incerto" em caso de divergência)
+    e `models_agree`. Também escreve `llm_label` = `ensemble_label`, porque
+    `_apply_audit_sampling` (compartilhado com o modo single-model) espera
+    essa coluna.
+    """
+    def _resolve(row) -> str:
+        labels = [row[c] for c in label_cols]
+        if any(label == "incerto" for label in labels):
+            return "incerto"
+        if len(set(labels)) == 1:
+            return labels[0]
+        return "incerto"  # modelos divergem -> mesmo tratamento de "incerto"
+
+    out = out.copy()
+    out["ensemble_label"] = out.apply(_resolve, axis=1)
+    out["models_agree"] = out.apply(lambda r: len({r[c] for c in label_cols}) == 1, axis=1)
+    out["llm_label"] = out["ensemble_label"]
+    return out
+
+
+def run_ensemble_triage_incremental(
+    candidates: pd.DataFrame,
+    out_path: Path,
+    model_specs: list[tuple[str, str]],
+    openrouter_api_key: Optional[str] = None,
+    audit_ratio: float = LLM_HUMAN_AUDIT_SAMPLE_RATIO,
+    seed: int = RANDOM_SEED,
+    log_every: int = 10,
+    max_workers: int = 1,
+    prompt_version: str = DEFAULT_PROMPT_VERSION,
+) -> pd.DataFrame:
+    """Mesmo checkpoint incremental de run_llm_triage_incremental, mas roda
+    `model_specs` (lista de tuplas `(provider, model)`) em cada candidato,
+    não só um. Cada modelo grava suas próprias colunas de label/rationale;
+    o rótulo final do ensemble é resolvido por `_apply_ensemble_agreement`.
+
+    `max_workers > 1` processa candidatos em paralelo (thread pool — as
+    chamadas são I/O-bound, esperando rede, então threads bastam, não
+    precisa de multiprocessing). Necessário pra escala de corpus inteiro:
+    sequencial (max_workers=1) processa ~1 candidato a cada 15-30s (2
+    modelos por candidato, chamada após chamada); em 91 mil candidatos isso
+    levaria dias. Cada provedor tem limite de concorrência próprio — comece
+    baixo (5-10) e suba conforme o provedor aguentar sem 429. A escrita no
+    CSV é protegida por lock; a ordem das linhas no arquivo não segue mais a
+    ordem do `candidates` de entrada quando max_workers > 1, mas isso não
+    importa pra retomada (a chave de dedup é por conteúdo, não por posição).
+
+    Recomendado rodar primeiro só sobre os 200 itens de medição (que já têm
+    rótulo humano consensual) e checar `ensemble_pairwise_agreement` /
+    `validate_llm_against_human` por modelo antes de liberar para o corpus
+    inteiro — ver validation/PLANO_AVALIACAO_PRECISAO.md.
+    """
+    logger.info("Prompt de triagem: %s", prompt_version)
+    classifiers = {
+        _model_slug(provider, model): _build_classifier(provider, model, openrouter_api_key,
+                                                         prompt_version=prompt_version)
+        for provider, model in model_specs
+    }
+    slugs = list(classifiers.keys())
+    label_cols = [f"llm_label__{s}" for s in slugs]
+
+    base_fieldnames = list(candidates.columns)
+    fieldnames = base_fieldnames + [
+        col for slug in slugs for col in (f"llm_label__{slug}", f"llm_rationale__{slug}")
+    ]
+
+    done_keys: set[str] = set()
+    done_rows: list[dict] = []
+    if out_path.exists() and out_path.stat().st_size > 0:
+        existing = pd.read_csv(out_path)
+        if label_cols[0] in existing.columns:
+            for _, r in existing.iterrows():
+                row_dict = r.to_dict()
+                done_keys.add(_candidate_key(row_dict))
+                done_rows.append({k: row_dict.get(k) for k in fieldnames})
+            logger.info("Retomando de %s: %d candidatos já classificados.", out_path, len(done_rows))
+
+    pending = [row.to_dict() for _, row in candidates.iterrows() if _candidate_key(row.to_dict()) not in done_keys]
+    logger.info("Triagem ensemble (%d modelos: %s): %d pendentes de %d totais (%d já feitos).",
+                len(slugs), slugs, len(pending), len(candidates), len(done_rows))
+
+    def _classify_one(candidate: dict) -> dict:
+        row_out = {k: candidate.get(k) for k in base_fieldnames}
+        for slug, classify in classifiers.items():
+            result = classify(candidate)
+            row_out[f"llm_label__{slug}"] = result["label"]
+            row_out[f"llm_rationale__{slug}"] = result["rationale"]
+        return row_out
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not (out_path.exists() and out_path.stat().st_size > 0)
+    write_lock = threading.Lock()
+    with out_path.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+
+        if max_workers <= 1:
+            for i, candidate in enumerate(pending, start=1):
+                row_out = _classify_one(candidate)
+                writer.writerow(row_out)
+                f.flush()
+                done_rows.append(row_out)
+                if i % log_every == 0 or i == len(pending):
+                    logger.info("[%d/%d] candidato classificado pelos %d modelos", i, len(pending), len(slugs))
+        else:
+            logger.info("Rodando com max_workers=%d (paralelo, thread pool).", max_workers)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(_classify_one, candidate) for candidate in pending]
+                for i, future in enumerate(concurrent.futures.as_completed(futures), start=1):
+                    row_out = future.result()
+                    with write_lock:
+                        writer.writerow(row_out)
+                        f.flush()
+                        done_rows.append(row_out)
+                    if i % log_every == 0 or i == len(pending):
+                        logger.info("[%d/%d] candidato classificado pelos %d modelos (max_workers=%d)",
+                                    i, len(pending), len(slugs), max_workers)
+
+    out = pd.DataFrame(done_rows)
+    out = _apply_ensemble_agreement(out, label_cols)
+    out = _apply_audit_sampling(out, audit_ratio, seed)
+    out.to_csv(out_path, index=False)
+    n_disagree = (~out["models_agree"]).sum()
+    logger.info("Ensemble: %d/%d candidatos com divergência entre modelos (%.1f%%).",
+                n_disagree, len(out), 100 * n_disagree / len(out) if len(out) else 0.0)
+    return out
+
+
+def ensemble_pairwise_agreement(df: pd.DataFrame, label_cols: list[str]) -> pd.DataFrame:
+    """κ de Cohen e AC1 de Gwet entre cada PAR de modelos do ensemble
+    (3 classes: UBW-verdadeiro/não-UBW/incerto). Rodar sobre os itens de
+    medição antes de liberar o ensemble para o corpus inteiro: dois modelos
+    concordando muito entre si mas pouco com o humano é sinal de viés
+    sistemático compartilhado (Zheng et al., 2023 — ver validation/A2_*.md),
+    não confiabilidade real.
+    """
+    rows = []
+    for i in range(len(label_cols)):
+        for j in range(i + 1, len(label_cols)):
+            a, b = label_cols[i], label_cols[j]
+            ratings_a, ratings_b = df[a].tolist(), df[b].tolist()
+            kappa = cohens_kappa(ratings_a, ratings_b)
+            ac1 = gwets_ac1(ratings_a, ratings_b)
+            rows.append({
+                "modelo_a": a, "modelo_b": b, "n": len(df),
+                "kappa": round(kappa, 4), "kappa_interpretation": interpret_kappa(kappa),
+                "gwet_ac1": round(ac1, 4),
+            })
+    return pd.DataFrame(rows)
+
+
+def validate_ensemble_against_human(df: pd.DataFrame, label_cols: list[str], human_col: str = "is_ubw") -> pd.DataFrame:
+    """Para cada modelo do ensemble, κ contra o rótulo humano (mesma regra
+    de descarte de validate_llm_against_human, < 0,61 descarta), mais o
+    κ do voto do ensemble como um todo (`ensemble_label`). Rodar sobre os
+    200 itens de medição, que já têm `is_ubw` humano consensual.
+    """
+    rows = []
+    human = df[human_col].tolist()
+    for col in label_cols + (["ensemble_label"] if "ensemble_label" in df.columns else []):
+        kappa = validate_llm_against_human(df[col].tolist(), human)
+        rows.append({"modelo": col, "kappa_vs_humano": round(kappa, 4),
+                     "kappa_interpretation": interpret_kappa(kappa),
+                     "aprovado": kappa >= LLM_KAPPA_DISCARD_THRESHOLD})
+    return pd.DataFrame(rows)
+
+
 def validate_llm_against_human(llm_labels: list[str], human_labels: list[bool]) -> float:
     """Seção 5.6: "Se o kappa entre LLM e anotadores ficar abaixo de 0,61,
     a triagem automática é descartada e a anotação é feita integralmente
@@ -668,6 +1032,76 @@ def cmd_llm_triage(args: argparse.Namespace) -> None:
     result[result["requires_human_review"]].to_csv(review_queue_path, index=False)
     logger.info("Fila de revisão humana (%d itens) salva em %s",
                 result["requires_human_review"].sum(), review_queue_path)
+
+
+def _parse_model_specs(specs: list[str]) -> list[tuple[str, str]]:
+    """Converte ["anthropic:claude-fable-5", "openrouter:deepseek/deepseek-v3.2-exp"]
+    em [("anthropic", "claude-fable-5"), ("openrouter", "deepseek/deepseek-v3.2-exp")].
+    Divide só no primeiro ':' — slugs de modelo usam '/', não ':'."""
+    parsed = []
+    for spec in specs:
+        if ":" not in spec:
+            raise ValueError(f"Spec de modelo inválida (esperado provider:model): {spec!r}")
+        provider, model = spec.split(":", 1)
+        parsed.append((provider, model))
+    return parsed
+
+
+def cmd_ensemble_triage(args: argparse.Namespace) -> None:
+    candidates = pd.read_csv(args.candidates)
+    if args.max_candidates:
+        candidates = candidates.head(args.max_candidates)
+    model_specs = _parse_model_specs(args.models)
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    result = run_ensemble_triage_incremental(
+        candidates, out_path=Path(args.out), model_specs=model_specs,
+        openrouter_api_key=args.openrouter_api_key,
+        audit_ratio=args.audit_ratio, seed=args.seed, log_every=args.log_every,
+        max_workers=args.max_workers, prompt_version=args.prompt_version,
+    )
+    logger.info("Resultado da triagem ensemble salvo em %s", args.out)
+
+    # Distribuição de rótulos por modelo — o sintoma que motivou o prompt v2 é
+    # justamente uma distribuição degenerada (quase nenhum "não-UBW"), e ele
+    # passa despercebido se ninguém olhar. Logar sempre, na cara.
+    for slug in [c.replace("llm_label__", "") for c in result.columns if c.startswith("llm_label__")]:
+        dist = result[f"llm_label__{slug}"].value_counts().to_dict()
+        logger.info("Distribuição de rótulos — %s: %s", slug, dist)
+
+    review_queue_path = Path(args.out).with_name(Path(args.out).stem + "_human_review_queue.csv")
+    result[result["requires_human_review"]].to_csv(review_queue_path, index=False)
+    logger.info("Fila de revisão humana (%d itens) salva em %s",
+                result["requires_human_review"].sum(), review_queue_path)
+
+
+def cmd_ensemble_validate(args: argparse.Namespace) -> None:
+    """Roda sobre a SAÍDA de `ensemble-triage` já feita nos 200 itens de
+    medição, com a coluna `is_ubw` humana anexada (join externo, feito
+    antes de chamar este comando). Reporta κ de cada modelo contra o
+    humano e κ par a par entre modelos.
+    """
+    df = pd.read_csv(args.annotations)
+    if df["is_ubw"].dtype == object:
+        df["is_ubw"] = df["is_ubw"].map(
+            {"True": True, "False": False, "true": True, "false": False, True: True, False: False}
+        )
+    label_cols = [c for c in df.columns if c.startswith("llm_label__")]
+    if not label_cols:
+        raise ValueError("Nenhuma coluna 'llm_label__<modelo>' encontrada — rode 'ensemble-triage' primeiro.")
+
+    human_report = validate_ensemble_against_human(df, label_cols)
+    pairwise_report = ensemble_pairwise_agreement(df, label_cols)
+
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    out_human = Path(args.out).with_name(Path(args.out).stem + "_vs_humano.csv")
+    out_pairwise = Path(args.out).with_name(Path(args.out).stem + "_pairwise.csv")
+    human_report.to_csv(out_human, index=False)
+    pairwise_report.to_csv(out_pairwise, index=False)
+    print("== Modelo vs humano ==")
+    print(human_report.to_string(index=False))
+    print("\n== Par a par entre modelos ==")
+    print(pairwise_report.to_string(index=False))
+    logger.info("Relatórios salvos em %s e %s", out_human, out_pairwise)
 
 
 def cmd_metrics(args: argparse.Namespace) -> None:
@@ -730,6 +1164,47 @@ def parse_args() -> argparse.Namespace:
         help="A cada quantos candidatos classificados imprime uma linha de progresso (modo incremental).",
     )
     p_llm.set_defaults(func=cmd_llm_triage)
+
+    p_ens = sub.add_parser("ensemble-triage", help="Pré-triagem multi-modelo (Seção 5.6 estendida).")
+    p_ens.add_argument("--candidates", required=True)
+    p_ens.add_argument("--out", required=True)
+    p_ens.add_argument(
+        "--models", nargs="+", required=True,
+        help="Lista provider:model, ex.: anthropic:claude-fable-5 "
+             "openrouter:deepseek/deepseek-v3.2-exp openrouter:qwen/qwen3-235b-a22b:free "
+             "openrouter:moonshotai/kimi-k2. Confira slug e preço em openrouter.ai/models antes de rodar.",
+    )
+    p_ens.add_argument("--openrouter-api-key", default=None, help="Padrão: variável de ambiente OPENROUTER_API_KEY.")
+    p_ens.add_argument("--audit-ratio", type=float, default=LLM_HUMAN_AUDIT_SAMPLE_RATIO)
+    p_ens.add_argument("--seed", type=int, default=RANDOM_SEED)
+    p_ens.add_argument("--max-candidates", type=int, default=None, help="Limite para testes locais.")
+    p_ens.add_argument("--log-every", type=int, default=10)
+    p_ens.add_argument(
+        "--prompt-version", choices=["v1", "v2"], default=DEFAULT_PROMPT_VERSION,
+        help="v1 (padrão): prompt original; κ de 0,41 (DeepSeek) a 0,61 (Qwen) contra o "
+             "gabarito humano da calibração. v2: checklist das 5 condições da definição "
+             "operacional — REPROVADO na validação (κ ≈ 0,00-0,03, rejeita ~85%% do que os "
+             "humanos aceitam); mantido só para reproduzir o experimento. Ver comentário em "
+             "DEFAULT_PROMPT_VERSION.",
+    )
+    p_ens.add_argument(
+        "--max-workers", type=int, default=1,
+        help="Chamadas concorrentes (thread pool, I/O-bound). Padrão 1 = sequencial "
+             "(comportamento antigo). Para o corpus inteiro, comece com 5-10 e suba conforme o "
+             "provedor aguentar sem erro 429 — sequencial levaria dias em 91 mil candidatos.",
+    )
+    p_ens.set_defaults(func=cmd_ensemble_triage)
+
+    p_ens_val = sub.add_parser(
+        "ensemble-validate",
+        help="Compara modelos do ensemble entre si e contra o humano (rodar nos 200 itens de medição).",
+    )
+    p_ens_val.add_argument(
+        "--annotations", required=True,
+        help="Saída de ensemble-triage com a coluna 'is_ubw' humana anexada (join feito antes).",
+    )
+    p_ens_val.add_argument("--out", required=True, help="Prefixo dos dois CSVs de saída (_vs_humano, _pairwise).")
+    p_ens_val.set_defaults(func=cmd_ensemble_validate)
 
     p_metrics = sub.add_parser("metrics", help="Cohen's Kappa e Gwet's AC1 (Seção 5.5).")
     p_metrics.add_argument("--annotations", required=True,
