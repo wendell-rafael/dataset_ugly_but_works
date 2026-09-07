@@ -1,0 +1,11 @@
+model,provider,quantization,prompt_usd_mtok,completion_usd_mtok,context,n_endpoints,quantizacoes_disponiveis
+qwen/qwen3-32b,DeepInfra,fp8,0.08,0.28,40960,4,"fp8,unknown"
+qwen/qwen3-coder,Venice,fp8,0.35,1.5,256000,5,"fp4,fp8,unknown"
+openai/gpt-oss-120b,AkashML,bf16,0.03,0.17,131072,20,"bf16,fp16,fp4,fp8,unknown"
+meta-llama/llama-3.3-70b-instruct,Novita,bf16,0.135,0.4,12288,13,"bf16,fp16,fp8,unknown"
+mistralai/mistral-small-3.2-24b-instruct,Parasail,bf16,0.09,0.3,131072,2,"bf16,fp8"
+deepseek/deepseek-chat,DeepInfra,fp4,0.32,0.89,163840,2,"fp4,unknown"
+deepseek/deepseek-v3.2-exp,Novita,fp8,0.27,0.41,163840,3,fp8
+google/gemma-3-27b-it,Novita,bf16,0.119,0.2,98304,4,"bf16,fp8"
+z-ai/glm-5.2,Baidu,fp8,0.419,1.316,1048576,32,"fp4,fp8,unknown"
+moonshotai/kimi-k2.5,DeepInfra,fp4,0.45,2.25,262144,8,"fp4,int4,unknown"

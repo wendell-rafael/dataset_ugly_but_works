@@ -17,7 +17,69 @@ data/
 # como dimensão analítica abandonada, issue_body removido) e execuções de
 # dryrun/calibracao_processo — histórico local, nunca preenchidas por
 # anotador, não faz parte da infra versionada.
+#
+# Precede as exceções abaixo de propósito: o git não permite reincluir arquivo
+# cujo diretório-pai está excluído, então nada de archive/ escapa por elas.
 validation/archive/
+
+# ---------------------------------------------------------------------------
+# validation/ é versionado. É metodologia mais anotação humana — meses de
+# trabalho de três pessoas que não se refaz. As regras `*.csv` e `*.jsonl`
+# acima existem para os dados de coleta (data/), não para cá, então reabrimos
+# essa árvore e voltamos a fechar arquivo por arquivo.
+!validation/**/*.csv
+!validation/**/*.jsonl
+
+# ATENÇÃO: o repositório é PÚBLICO. Os arquivos abaixo carregam PII e ficam
+# fora — commit é permanente, sai do histórico só reescrevendo tudo.
+#
+# Duas origens distintas de PII:
+#   1. colunas author_name / author_email — dado bruto que existe no dataset
+#      de trabalho para uma survey futura e não tem por que sair da máquina;
+#   2. coluna body_text — o texto do próprio artefato traz e-mail em trailers
+#      `Signed-off-by:` e `Co-authored-by:`. É o caso da maioria dos arquivos
+#      aqui, e o menos óbvio: nenhuma coluna se chama "email".
+#
+# Para versionar qualquer um destes, mascarar body_text antes com o mesmo
+# mascarador de scripts/06_export_publishable.py e versionar a cópia
+# mascarada, com manifesto de contagem. Ver validation/POLITICA_ANONIMIZACAO.md
+# e validation/D1_EXPORT_PII_FINDINGS.md.
+#
+# Antes de commitar em validation/, rodar: python3 scripts/14_check_pii.py
+validation/sample_code_comment/amostra_code_comment.csv
+validation/sample_final_v2/sample_calibration_oficial.csv
+validation/sample_final_v2/sample_main_oficial.csv
+validation/sample_final_v2/sample_near_miss_oficial.csv
+validation/sample_final_v2/sample_watch_oficial.csv
+validation/batches_3anotadores/DIVERGENCIAS_Bruno_Miguel_plena.csv
+validation/batches_3anotadores/REVISAO_385_nao_unanimes.csv
+validation/batches_3anotadores/batch_Bruno_calibracao_oficial.csv
+validation/batches_3anotadores/batch_Bruno_calibracao_oficial_PREENCHIDO.csv
+validation/batches_3anotadores/batch_Bruno_plena_oficial.csv
+validation/batches_3anotadores/batch_Miguel_calibracao_oficial.csv
+validation/batches_3anotadores/batch_Miguel_calibracao_oficial_PREENCHIDO.csv
+validation/batches_3anotadores/batch_Miguel_plena_oficial.csv
+validation/batches_3anotadores/batch_Wendell_calibracao_oficial.csv
+validation/batches_3anotadores/batch_Wendell_calibracao_oficial_PREENCHIDO.csv
+validation/batches_3anotadores/batch_Wendell_plena_oficial.csv
+validation/ensemble_medicao_200.csv
+validation/ensemble_medicao_200_human_review_queue.csv
+validation/experimentos_prompt/calib_prompt_v1.csv
+validation/experimentos_prompt/calib_prompt_v2.csv
+validation/panel/gold_dev_200.csv
+validation/panel/gold_test_385.csv
+validation/panel/analysis/gold_dev_200__errors__meta_llama_llama_3_3_70b_instruct_fewshot_fixed.csv
+validation/panel/analysis/gold_dev_200__error_analysis__meta_llama_llama_3_3_70b_instruct_fewshot_fixed.md
+validation/resultado_final/anotacao_Bruno_385.csv
+validation/resultado_final/anotacao_Miguel_385.csv
+validation/resultado_final/anotacao_Wendell_385.csv
+validation/resultado_final/consenso_385.csv
+validation/sample_code_comment/ui/anotar_code_comment_Bruno.html
+validation/sample_code_comment/ui/anotar_code_comment_Miguel.html
+validation/sample_code_comment/ui/anotar_code_comment_Wendell.html
+validation/viewers_locais/plena_Bruno.html
+validation/viewers_locais/plena_Miguel.html
+validation/viewers_locais/plena_Wendell.html
 
 # Python
 __pycache__/

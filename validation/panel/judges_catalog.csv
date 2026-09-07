@@ -1,0 +1,12 @@
+model,existe,prompt_usd_mtok,completion_usd_mtok,context,sugestoes
+qwen/qwen3-32b,True,0.08,0.28,131072,
+qwen/qwen3-coder,True,0.3,1.0,262144,
+openai/gpt-oss-120b,True,0.037,0.17,131072,
+meta-llama/llama-3.3-70b-instruct,True,0.71,0.71,131072,
+mistralai/ministral-8b,False,,,,"mistralai/ministral-8b-2512, mistralai/ministral-8b-2512:batch"
+mistralai/mistral-small-3.2-24b-instruct,True,0.075,0.2,131072,
+deepseek/deepseek-chat,True,0.257,1.029,163840,
+deepseek/deepseek-v3.2-exp,True,0.27,0.41,163840,
+google/gemma-3-27b-it,True,0.08,0.45,131072,
+z-ai/glm-5.2,True,1.19,3.74,1048576,
+moonshotai/kimi-k2.5,True,0.45,2.25,262144,

@@ -1,0 +1,41 @@
+{
+  "label": "oficial",
+  "seed": 42,
+  "candidates_file": "data/full_run/ubw_collected_consolidated.csv",
+  "methodology_version": "v2_2026-07-29",
+  "n_total_frame": 91458,
+  "main_n_adjusted": 385,
+  "watch_expressions": [
+    "crude but it works",
+    "hope everything will work",
+    "horrible but works",
+    "messy but works",
+    "not elegant but works",
+    "terrible but works"
+  ],
+  "excluded_artifact_types": [
+    "issue_body"
+  ],
+  "category_stratification": false,
+  "pool_sizes": {
+    "calibration": 200,
+    "watch": 106,
+    "near_miss": 100,
+    "main": 385
+  },
+  "params": {
+    "command": "build-v2",
+    "candidates": "data/full_run/ubw_collected_consolidated.csv",
+    "out_dir": "validation/sample_final_v2",
+    "label": "oficial",
+    "confirm_consolidated": "SIM, A+B consolidados",
+    "main_n": "385",
+    "watch_floor": "30",
+    "watch_rarity_threshold": "50",
+    "near_miss_n": "100",
+    "calibration_n": "200",
+    "exclude_artifact_types": "issue_body",
+    "seed": "42",
+    "func": "<function cmd_build_v2 at 0x76e5e74a3d90>"
+  }
+}

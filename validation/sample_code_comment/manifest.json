@@ -1,0 +1,13 @@
+{
+  "artefato": "code_comment",
+  "desenho": "aleatória simples (autoponderada)",
+  "corpus_estrato": 26036,
+  "alvo_cochran": 379,
+  "cochran": "95% de confiança, margem 5%, p=0,50, corrigido para população finita",
+  "seed": 42,
+  "do_teste_anterior_contam_para_alvo": 110,
+  "da_calibracao_excluidos_sem_contar": 57,
+  "itens_novos_a_anotar": 269,
+  "expressoes_na_amostra": 13,
+  "nota": "amostra autoponderada: a precisão global é a proporção simples de positivos, sem pesos. NÃO sustenta análise por expressão do léxico — a cauda do léxico sai com zero ou poucos itens."
+}
