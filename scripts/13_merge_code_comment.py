@@ -34,9 +34,16 @@ AMOSTRA = BASE / "amostra_code_comment.csv"
 ANOTADORES = ("Wendell", "Bruno", "Miguel")
 
 # Itens em que o CSV do Bruno mudou entre o envio de 04/09 e o de 07/09.
-# Os tres viraram True -> False, todos na direcao do consenso dos outros dois.
-# A proveniencia dessa correcao esta registrada em anotacoes/PROVENIENCIA.md e
-# ainda NAO foi confirmada; enquanto isso o script reporta os dois cenarios.
+# Causa registrada em 07/09/2026: bug de exportacao da ferramenta -- a versao de
+# 04/09 saiu com esses tres rotulos errados. Os votos seguem independentes,
+# entao o cenario `recebido` e o oficial (Fleiss 0,816).
+#
+# O contrafactual continua sendo calculado de proposito: a causa foi declarada,
+# nao verificada (nao ha log da ferramenta, e os arquivos de 04/09 foram
+# sobrescritos), e o padrao das mudancas nao distingue bug de exportacao de
+# revisao pos-discussao. Manter o numero conservador (0,755) a mao custa nada e
+# evita reexecutar tudo se a discussao com o orientador pedir por ele.
+# Ver anotacoes/PROVENIENCIA.md.
 AJUSTE_BRUNO = {"cc0002": True, "cc0020": True, "cc0049": True}
 
 
@@ -240,7 +247,7 @@ def main() -> None:
     resumo = {
         "n_itens": n,
         "anotadores": list(ANOTADORES),
-        "cenario_oficial": None,  # nenhum eleito enquanto a proveniencia estiver aberta
+        "cenario_oficial": "recebido",
         "kappa_fleiss_recebido": tres["kappa_fleiss"],
         "kappa_fleiss_pre_ajuste": tres_a["kappa_fleiss"],
         "ac1_recebido": tres["ac1_gwet"],
@@ -248,7 +255,10 @@ def main() -> None:
         "ic95_wilson": [precisao["ic95_wilson_inf"], precisao["ic95_wilson_sup"]],
         "precisao_independe_do_ajuste": precisao["precisao"] == precisao_a["precisao"],
         "ajuste_bruno_itens": sorted(AJUSTE_BRUNO),
-        "proveniencia_do_ajuste": "NAO CONFIRMADA -- ver anotacoes/PROVENIENCIA.md",
+        "proveniencia_do_ajuste": (
+            "bug de exportacao da ferramenta, registrado em 2026-09-07; causa "
+            "declarada e nao verificada -- ver anotacoes/PROVENIENCIA.md"
+        ),
     }
     (SAIDA / "resumo.json").write_text(
         json.dumps(resumo, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

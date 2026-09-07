@@ -19,7 +19,7 @@ Integridade conferida por `scripts/13_merge_code_comment.py`: 269/269 itens em
 cada arquivo, `item_id` coincidindo com `amostra_code_comment.csv`, sem
 duplicata, sem rótulo vazio, sem observação vazia.
 
-## Pendência aberta: o ajuste no arquivo do Bruno
+## Resolvido: o ajuste no arquivo do Bruno era bug de exportação
 
 O CSV do Bruno foi enviado duas vezes. A versão de 04/09 tinha 252 positivos; a
 de 07/09, salva aqui, tem 249. Diferem em três itens, e **somente** neles:
@@ -42,22 +42,27 @@ dois anotadores. Efeito no κ:
 
 Sem o ajuste nenhum par atinge 0,80; com ele, todos atingem.
 
-**A origem da correção ainda não foi registrada.** Isso precisa ser fechado
-antes de o κ entrar em qualquer texto submetido, porque as leituras possíveis
-não são equivalentes:
+**Origem registrada em 07/09/2026: bug de exportação**, informado por Wendell
+Nascimento. A versão de 04/09 saiu da ferramenta com esses três rótulos
+errados; a de 07/09 é a que reflete o julgamento do anotador. Os votos seguem
+independentes, então **κ de Fleiss = 0,816 é a estatística de confiabilidade
+reportável**, e o cenário `recebido` é o oficial.
 
-- **Defeito de exportação ou de preenchimento**, corrigido pelo próprio
-  anotador sem acesso aos votos dos outros → κ=0,816 é confiabilidade legítima.
-  Basta anotar aqui qual era o defeito e a data.
-- **Revisão do anotador após discussão, ou com os votos dos outros à vista** →
-  os votos deixam de ser independentes e κ=0,816 passa a ser acordo
-  *pós-adjudicação*. Nesse caso o número reportável como confiabilidade é
-  **0,755**, e o 0,816 só entra como estatística pós-consenso, com o rótulo
-  explícito.
+Duas ressalvas que ficam registradas por honestidade metodológica, não por
+dúvida sobre o relato:
 
-Enquanto a pendência estiver aberta, `13_merge_code_comment.py` calcula e grava
-os **dois cenários** (`recebido` e `pre_ajuste_bruno`) em todos os arquivos de
-saída. Nenhum dos dois foi eleito oficial.
+1. A causa foi **declarada, não verificada independentemente** — não há log da
+   ferramenta que comprove o defeito, e os arquivos de 04/09 foram
+   sobrescritos. Se um revisor pedir evidência, o que existe é este registro.
+2. O padrão das três mudanças (mesma direção, todas caindo sobre o consenso dos
+   outros dois, nenhuma outra célula alterada) é **compatível com** bug de
+   exportação, mas também com revisão pós-discussão. Não distingue os dois.
+
+Por isso `scripts/13_merge_code_comment.py` continua calculando e gravando os
+**dois cenários** (`recebido` e `pre_ajuste_bruno`) em todos os arquivos de
+saída, com `cenario_oficial: "recebido"` no `resumo.json`. O número
+conservador (0,755) fica disponível sem precisar reexecutar nada, caso a
+discussão com o orientador recomende reportá-lo.
 
 ## O que não depende da pendência
 

@@ -1,0 +1,434 @@
+{
+  "script": "16_mascara_validation.py",
+  "gerado_em_utc": "2026-09-07T22:52:03.003447+00:00",
+  "mascarador": "scripts/06_export_publishable.py:apply_pii_masking",
+  "colunas_removidas_sempre": [
+    "author_name",
+    "author_login",
+    "author_email",
+    "author_hash"
+  ],
+  "nota_author_hash": "author_hash sai junto: SHA-256 sem salt de e-mail/login, reidentificavel com lista de candidatos (ubw/schema.py). Nao entra em nenhuma analise das amostras de validacao.",
+  "mascaras_agregadas": {
+    "email": 1424,
+    "mention": 771
+  },
+  "arquivos": [
+    {
+      "arquivo": "batches_3anotadores/DIVERGENCIAS_Bruno_Miguel_plena.csv",
+      "origem_sha256": "19c361699d90f46120ee07efe1367b1fdca569736f7ad3c96609a496cd1d1892",
+      "linhas": 21,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 4,
+        "mention": 2
+      },
+      "saida_sha256": "b751af820c90a402da63c06a04c452af522babc1a1a09c03fd52c090508b57ac",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/REVISAO_385_nao_unanimes.csv",
+      "origem_sha256": "e24e4ce4852fbbbd7b1ca83c5a0fbe0e56e52e2597cd492c20b638a58e30f898",
+      "linhas": 13,
+      "colunas_removidas": [],
+      "mascaras": {},
+      "saida_sha256": "e24e4ce4852fbbbd7b1ca83c5a0fbe0e56e52e2597cd492c20b638a58e30f898",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Bruno_calibracao_oficial.csv",
+      "origem_sha256": "10f465bd472a7c0559e211c4a7767b4347c1f4ca6e5a8dfa65391742d60df4d5",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "37b9189afbd56de7603782a17bf44d4d0f75fb56b3e70ec71555f5458991a692",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Bruno_calibracao_oficial_PREENCHIDO.csv",
+      "origem_sha256": "c1ca618e1fd57cc8622b45c21151fd94e093424bb8681842c3efca8eb446b33e",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "25fb675c74d8a416431fea1036e3c5e453cbd360e359986a2e8bf037204dc95c",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Bruno_plena_oficial.csv",
+      "origem_sha256": "d7c01623e255e3a5a1597e0f261f4a29939bf32ca7bef245daae72f1724c4006",
+      "linhas": 385,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "e600e69d9084825fc8a43d9ed19b561d415318997002ef009f7250e5bf6d3111",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Miguel_calibracao_oficial.csv",
+      "origem_sha256": "0dc18d9a63edbbbd5677bbba5ea2fa33bc1266a500da27219437055df977430e",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "f97a7072e20588e85e32901ae4d166aeee0eb8b10ce3f112354865eaaf3d33b2",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Miguel_calibracao_oficial_PREENCHIDO.csv",
+      "origem_sha256": "c086f1ef462f6816e72253de842f0f864e20956ce006ec5c89899a9ab217813c",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "8492856294ad8df6db62f5cf58f733543e966655c767a3c5a81b77cf38aff819",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Miguel_plena_oficial.csv",
+      "origem_sha256": "f7f881130cdb12c34d09b6565bef821c0addbb110a529a0c4cc99ac556cfbc6c",
+      "linhas": 385,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "4abb09d09c047fb15337c6a2c9022e4ff655651e56a37eca7b57a818ed6a677d",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Wendell_calibracao_oficial.csv",
+      "origem_sha256": "b09715be989964f142cc37eb932790aa5e8f766488c36f1f3215e4f9dc00b891",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "3175b1bfc104f42d646c85d491ce82b718e6e4b2a08d4510c8a852e291d26533",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Wendell_calibracao_oficial_PREENCHIDO.csv",
+      "origem_sha256": "88ac639f29a8cbfe6c8e9e70ddd67e3c580ebed844010c0511d47ed62dbddd0c",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "231543c88cac28bdfc407ef0eb9c92025be4bbf127a1c42c0537f4f275fa141e",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "batches_3anotadores/batch_Wendell_plena_oficial.csv",
+      "origem_sha256": "8a34b5d6b22f53e78e7d2e12f039c3aa2b04ed40955dd2fae47032447ca265e9",
+      "linhas": 385,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "5154c29dca70c3164fb19f14e01d414bd4b0c3e211d32d685558f90bb6723ad2",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "ensemble_medicao_200.csv",
+      "origem_sha256": "600cd76ccca383b439923096d50e0621e650252c774df3b3e3a12e78a22bf825",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 37,
+        "mention": 19
+      },
+      "saida_sha256": "c93f7ef7c4767ea2ce0a78e3132e96856046a41eb7cddb1b4d7adcce577d0a57",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "ensemble_medicao_200_human_review_queue.csv",
+      "origem_sha256": "dce86ded30cc437a60fa68bf95069618bea0a0010c780afcfc59e61c64de5d16",
+      "linhas": 82,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 25,
+        "mention": 10
+      },
+      "saida_sha256": "3879455b1834009544f6302c1f5cbe6963586e32bdd4d358262652e6194aa6b7",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "experimentos_prompt/calib_prompt_v1.csv",
+      "origem_sha256": "22d0f8fb3c0ef345b09166668e946a1c5af9ae1eadb3e68428d3f015f51d119b",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "fa83ae2f60177bebaad37f6f774d4b1ac37f0b08d5004d3158f1eb66ce7d7620",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "experimentos_prompt/calib_prompt_v2.csv",
+      "origem_sha256": "ad804997532a1c3780e9320bad8bca3aa62654519c0ea71deee263f1f7079bf3",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "5eca02ee7760c10a48711e9aa207eefd916d20fbf90fccb3bb7738b8aa350d8e",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "panel/analysis/gold_dev_200__error_analysis__meta_llama_llama_3_3_70b_instruct_fewshot_fixed.md",
+      "origem_sha256": "9b097ea8bd171f2f0ca9c509d6e1b8a5327695878983de95a4a7fd22a206cc8d",
+      "bytes": 6583,
+      "mascaras": {
+        "email": 3
+      },
+      "saida_sha256": "862593a11977c007a2055fd3c4be2208b48824335390820425dfbacfa410c34e",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "panel/analysis/gold_dev_200__errors__meta_llama_llama_3_3_70b_instruct_fewshot_fixed.csv",
+      "origem_sha256": "8a8b4e8f4766867b8dae7214e4e9e57fa1d2761f7e287433a0102a9ba28a818e",
+      "linhas": 19,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 15,
+        "mention": 17
+      },
+      "saida_sha256": "e47661f60e81ca275daa7ceb2f36bba838aba75cafea1eb30f25e4fa828f5398",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "panel/gold_dev_200.csv",
+      "origem_sha256": "ec7a1382296be4d8606244926c93a22d29b6e660343ac31fc5c197618759a8c7",
+      "linhas": 200,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "2a88789c33c86c59a8eec4afcd2211619cd295f480ec04d81fbebf1387abc21f",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "panel/gold_test_385.csv",
+      "origem_sha256": "a3fd5356dc749d6da6e146de924c9f676b7980ae1f0aff9b4626e0538dd5c6f0",
+      "linhas": 385,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "673278b7d1154970133027bdcc4b08efeb9edd2e8c42245114282ca2f2be5964",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "resultado_final/anotacao_Bruno_385.csv",
+      "origem_sha256": "f5c6e9c6daf0a70e3508581dcbbb21446561cda4de367a08f08af277be4d3c65",
+      "linhas": 385,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "30d5a3ce46c55e7a4bd71597d3fbfa28dc5499a8e357b814d90214b916810e26",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "resultado_final/anotacao_Miguel_385.csv",
+      "origem_sha256": "c8aec83382e75274ab4b58344ea6260977848a086de9703c8a413a4180ad2de7",
+      "linhas": 385,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "42d7b9952032095e25918935b82a79d561f2cb53dc37a5e269a07c3b24028ef6",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "resultado_final/anotacao_Wendell_385.csv",
+      "origem_sha256": "5c290e22974460f408dc79f0bc2797e1ae6b7ddc015bc053f3d92a2a62cbacc0",
+      "linhas": 385,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "ebc2cae985c886a8b013c5f48da061de722be3e0fa706337286fcdb8c7328ca4",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "resultado_final/consenso_385.csv",
+      "origem_sha256": "d6a4af03411fcff590460e76a6dc26643609fac5035ac5ccf9aeac65732d37b4",
+      "linhas": 385,
+      "colunas_removidas": [],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "61253c4b4f0fc8ddc9a167cc24dbd4e4cc3c9a7562de53bb80f9926c485af3e6",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "sample_code_comment/amostra_code_comment.csv",
+      "origem_sha256": "5b87ceb9cd765b90925f4a201b72366d83b666c753e6a9f77dfe2e4aa4f2f326",
+      "linhas": 269,
+      "colunas_removidas": [
+        "author_name",
+        "author_login",
+        "author_email",
+        "author_hash"
+      ],
+      "mascaras": {
+        "email": 1,
+        "mention": 8
+      },
+      "saida_sha256": "d976811391cdb10072582a8e29637affba3a591599c21594bebe567ce1ff72e7",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "sample_code_comment/ui/anotar_code_comment_Bruno.html",
+      "origem_sha256": "76514017633407a1e69c8da5a5e7f2d8cb3135f0a180dc37e2c3fa7870c62c64",
+      "bytes": 184502,
+      "mascaras": {
+        "email": 1
+      },
+      "saida_sha256": "164b5f8b00408e3f25dc62b5cd4e228af2ba27d7cb499f67a1ea608677488c3c",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "sample_code_comment/ui/anotar_code_comment_Miguel.html",
+      "origem_sha256": "470d0fb45c77cd7e23d5c03a4c96bc89e22b5c0302ed908fe6ee9bdd471eddff",
+      "bytes": 184505,
+      "mascaras": {
+        "email": 1
+      },
+      "saida_sha256": "b1778d9a343ceb05db92c85773e6128aab54424a8492658bb7b8535cd9871099",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "sample_code_comment/ui/anotar_code_comment_Wendell.html",
+      "origem_sha256": "ee0382a9592f7cf4433ff0d065c83c325ee7a71ae41c346cafb133dca62bdca4",
+      "bytes": 184508,
+      "mascaras": {
+        "email": 1
+      },
+      "saida_sha256": "f84f7407108a9b2934ef393583d4cae833ce39bf40fee5a172d879bfd3b563b9",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "sample_final_v2/sample_calibration_oficial.csv",
+      "origem_sha256": "a31e15605b439506ff3c1265df1f663ece256fb7987ca19e6fe7563e7c95eca5",
+      "linhas": 200,
+      "colunas_removidas": [
+        "author_name",
+        "author_login",
+        "author_email",
+        "author_hash"
+      ],
+      "mascaras": {
+        "email": 50,
+        "mention": 31
+      },
+      "saida_sha256": "fec8fa84c93cb7e203e8e65d101e28d9f904151bb2a7646387d89e80e41fe756",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "sample_final_v2/sample_main_oficial.csv",
+      "origem_sha256": "8e552648f37b5af02d5a59d6d346d5f6a33268d8594ab5b59f1e7664943baf93",
+      "linhas": 385,
+      "colunas_removidas": [
+        "author_name",
+        "author_login",
+        "author_email",
+        "author_hash"
+      ],
+      "mascaras": {
+        "email": 54,
+        "mention": 26
+      },
+      "saida_sha256": "6db7ddca6ef4cd11b1921ce70eff822e6e6f40ec7b5337300e4fd07922102dc6",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "sample_final_v2/sample_near_miss_oficial.csv",
+      "origem_sha256": "4243c531af60cca1fef8fc4d2a65cdc69b6d94637be8e5d632c5e9a48c256e8b",
+      "linhas": 100,
+      "colunas_removidas": [
+        "author_name",
+        "author_login",
+        "author_email",
+        "author_hash"
+      ],
+      "mascaras": {
+        "email": 187,
+        "mention": 170
+      },
+      "saida_sha256": "eb3b505562cb3296b69a5a9e3a588364cfdcdf5f9b8840a851f00f7bef424076",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "sample_final_v2/sample_watch_oficial.csv",
+      "origem_sha256": "4b6e86b5f3e57734a282b32eabdf03dd61c6b5f7990a3d78df84c1b35216a983",
+      "linhas": 106,
+      "colunas_removidas": [
+        "author_name",
+        "author_login",
+        "author_email",
+        "author_hash"
+      ],
+      "mascaras": {
+        "email": 1,
+        "mention": 1
+      },
+      "saida_sha256": "4020def1a1516e29539d6fe72d4179a44d0df5b13350f59f8fc1b889f5cb883d",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "viewers_locais/plena_Bruno.html",
+      "origem_sha256": "45c6ac129e7dabe6fdae08f52e06213e3ab92416bf80e45d46a76e5244c06605",
+      "bytes": 385686,
+      "mascaras": {
+        "email": 54
+      },
+      "saida_sha256": "c412713de2630f79c75598a399e64075b14974183ac8309246697dcf06af58bd",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "viewers_locais/plena_Miguel.html",
+      "origem_sha256": "a6af3263c115d1e230011cf35d35d7b096e444a199be349ba926b6ef11ec349c",
+      "bytes": 385689,
+      "mascaras": {
+        "email": 54
+      },
+      "saida_sha256": "c3cbde35ef52cf4d6f4ad1234a7003ff6395a134ff2b89edc3104680b4a3e66c",
+      "emails_restantes": []
+    },
+    {
+      "arquivo": "viewers_locais/plena_Wendell.html",
+      "origem_sha256": "1a07b4d7ee6f90d783f7a3938014325335644d8ebd202a25ee15bcd767956a62",
+      "bytes": 385692,
+      "mascaras": {
+        "email": 54
+      },
+      "saida_sha256": "b70dc60460be6609ba043ce51207cc92070c824b1a13dce64e7c5201cecaa4dd",
+      "emails_restantes": []
+    }
+  ]
+}
