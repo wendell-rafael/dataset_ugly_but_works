@@ -1,0 +1,138 @@
+[
+  {
+    "item_id": "cc0106",
+    "label": "NOT-UBW",
+    "padrao": "points elsewhere",
+    "matched_expression": "ugly hack",
+    "repo_full_name": "Wargus/stratagus",
+    "body_text": "\ttype=unit->Type;\t//  Some guy made DropOutOnSide set unit to belong to the building\t//  training it. This was an ugly hack, setting X and Y is enough,\t//  no need to add the unit only to be removed.\tnunit->X=unit->X;\tnunit->Y=unit->Y;",
+    "body_chars": 235,
+    "rationale": "The phrase describes an earlier implementation written by other people, which the present code avoids — not a substandard solution adopted here.",
+    "obs_pt": "O comentário \"ugly hack\" descreve uma implementação anterior feita por terceiros e que o código atual está evitando, não uma solução inadequada sendo aceita no código atual.",
+    "fonte_obs": "Bruno",
+    "votos": {
+      "Wendell": false,
+      "Bruno": false,
+      "Miguel": false
+    }
+  },
+  {
+    "item_id": "cc0256",
+    "label": "NOT-UBW",
+    "padrao": "not adopted",
+    "matched_expression": "ugly hack",
+    "repo_full_name": "RobotLocomotion/drake",
+    "body_text": "    else bi=*iter++;    nc = bodies[bi].contact_pts.cols();    if (nc>0) {      // note: it's possible to pass pos.block in directly but requires such an ugly hack that I think it's not worth it:      // http://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html      p.resize(3,nc);      forwardKin(bi,bodies[bi].contact_pts,0,p);",
+    "body_chars": 338,
+    "rationale": "The comment raises a possible ugly hack and then explicitly decides against using it, so nothing substandard was kept.",
+    "obs_pt": "O comentário menciona um possível \"ugly hack\", mas explicitamente decide não utilizá-lo.",
+    "fonte_obs": "Bruno",
+    "votos": {
+      "Wendell": false,
+      "Bruno": false,
+      "Miguel": false
+    }
+  },
+  {
+    "item_id": "cc0269",
+    "label": "NOT-UBW",
+    "padrao": "identifier only",
+    "matched_expression": "stopgap",
+    "repo_full_name": "microsoft/conductor",
+    "body_text": "class TestAcaCredentialStopgap:    \"\"\"OQ#6 Phase 1 credential stopgap forwarding.\"\"\"    @pytest.mark.asyncio    async def test_execute_forwards_env_credential_stopgap(",
+    "body_chars": 167,
+    "rationale": "The phrase is part of the name and description of a class and its test, not an admission about the code shown.",
+    "obs_pt": "A expressão \"stopgap\" faz parte dos nomes e da descrição de uma classe/teste dedicado ao stopgap, não constitui uma admissão de solução inadequada no código apresentado.",
+    "fonte_obs": "Wendell",
+    "votos": {
+      "Wendell": false,
+      "Bruno": false,
+      "Miguel": false
+    }
+  },
+  {
+    "item_id": "cc0002",
+    "label": "NOT-UBW",
+    "padrao": "no admission",
+    "matched_expression": "temp fix",
+    "repo_full_name": "BearToCode/carta",
+    "body_text": "const e=Object.freeze({displayName:\"PowerShell\",name:\"powershell\",patterns:[{begin:\"<#\",beginCaptures:{0:{name:\"punctuation.definition.comment.block.begin.powershell\"}},end:\"#>\",endCaptures:{0:{name:\"punctuation.definition.comment.block.end.powershell\"}},name:\"comment.block.powershell\",patterns:[{include:\"#commentEmbeddedDocs\"}]},{match:\"[2-6]>&1|>>|>|<<|<|>|>\\\\||[1-6]>|[1-6]>>\",name:\"keyword.operator.redirection.powershell\"},{include:\"#commands\"},{include:\"#commentLine\"},{include:\"#variable\"},{include:\"#subexpression\"},{include:\"#function\"},{include:\"#attribute\"},{include:\"#UsingDirective\"},{include:\"#type\"},{include:\"#hashtable\"},{include:\"#doubleQuotedString\"},{include:\"#scriptblock\"},{comment:\"Needed to parse stuff correctly in 'argument mode'. (See about_parsing.)\",include:\"#doubleQuotedStringEscapes\"},{applyEndPatternLast:!0,begin:\"['\\\\x{2018}-\\\\x{201B}]\",beginCaptures:{0:{name:\"punctuation.definition.string.begin.powershell\"}},end:\"['\\\\x{2018}-\\\\x{201B}]\",endCaptures:{0:{name:\"punctuation.definition.string.end.powershell\"}},name:\"string.quoted.single.powershell\",patterns:[{match:\"['\\\\x{2018}-\\\\x{201B}]{2}\",name:\"constant.character.escape.powershell\"}]},{begin:'(@[\"\\\\x{201C}-\\\\x{201E}])\\\\s*$',beginCaptures:{1:{name:\"punctuation.definition.string.begin.powershell\"}},end:'^[\"\\\\x{201C}-\\\\x{201E}]@',endCaptures:{0:{name:\"punctuation.definition.string.end.powershell\"}},name:\"string.quoted.double.heredoc.powershell\",patterns:[{include:\"#variableNoProperty\"},{include:\"#doubleQuotedStringEscapes\"},{include:\"#interpolation\"}]},{begin:\"(@['\\\\x{2018}-\\\\x{201B}])\\\\s*$\",beginCaptures:{1:{name:\"punctuation.definition.string.begin.powershell\"}},end:\"^['\\\\x{2018}-\\\\x{201B}]@\",endCaptures:{0:{name:\"punctuation.definition.string.end.powershell\"}},name:\"string.quoted.single.heredoc.powershell\"},{include:\"#numericConstant\"},{begin:\"(@)(\\\\()\",beginCaptures:{1:{name:\"keyword.other.array.begin.powershell\"},2:{name:\"punctuation.section.group.begin.powershell\"}},end:\"\\\\)\",endCaptures:",
+    "body_chars": 2000,
+    "rationale": "Nothing in this snippet states that the code shown is a poorly built solution, so there is no admission to judge.",
+    "obs_pt": "Não há trecho que indique que há uma implementação mal feita no código.",
+    "fonte_obs": "Wendell",
+    "votos": {
+      "Wendell": false,
+      "Bruno": false,
+      "Miguel": false
+    }
+  },
+  {
+    "item_id": "cc0008",
+    "label": "UBW-TRUE",
+    "padrao": null,
+    "matched_expression": "not pretty but it works",
+    "repo_full_name": "openSUSE/libzypp",
+    "body_text": "// this is the order we expect the FDs we need to communicate to be set up// by the parent. This is not pretty but it works and is less effort than// setting up a Unix Domain Socket and sending FDs over that.// Usually relying on conventions is not exactly a good idea but in this case we make an exception ;)enum class ExpectedFds : int {",
+    "body_chars": 339,
+    "rationale": "The author grants the solution is not pretty but works, and says a proper fix would take more effort — kept anyway.",
+    "obs_pt": "O autor admite que essa não é uma solução \"bonita\", mas ela funciona. Logo depois diz que a solução mais adequada precisaria de mais esforço.",
+    "fonte_obs": "Wendell",
+    "votos": {
+      "Wendell": true,
+      "Bruno": true,
+      "Miguel": true
+    }
+  },
+  {
+    "item_id": "cc0037",
+    "label": "UBW-TRUE",
+    "padrao": null,
+    "matched_expression": "dirty hack",
+    "repo_full_name": "ultimatepp/ultimatepp",
+    "body_text": "NAMESPACE_UPP//a dirty hack to expose protected virtuals//more see bellowclass PusherExpose : public Pusher{",
+    "body_chars": 108,
+    "rationale": "The phrase labels the code immediately below as an improvised solution, which is what makes it UBW.",
+    "obs_pt": "O comentário \"dirty hack\" classifica o código logo abaixo como uma solução improvisada, caracterizando UBW.",
+    "fonte_obs": "Wendell",
+    "votos": {
+      "Wendell": true,
+      "Bruno": true,
+      "Miguel": true
+    }
+  },
+  {
+    "item_id": "cc0099",
+    "label": "UBW-TRUE",
+    "padrao": null,
+    "matched_expression": "stopgap",
+    "repo_full_name": "google/guava",
+    "body_text": "          }        };    /* This next line added as a stopgap until JDK6 bug is fixed. */    tester.ignoreSunJavaBug6529795();    tester.test();",
+    "body_chars": 144,
+    "rationale": "The comment admits a stopgap kept in place until a known bug is fixed elsewhere.",
+    "obs_pt": "O comentário \"stopgap until JDK6 bug is fixed\" admite explicitamente uma solução provisória mantida até a correção de um problema externo, caracterizando UBW.",
+    "fonte_obs": "Wendell",
+    "votos": {
+      "Wendell": true,
+      "Bruno": true,
+      "Miguel": true
+    }
+  },
+  {
+    "item_id": "cc0244",
+    "label": "UBW-TRUE",
+    "padrao": null,
+    "matched_expression": "temporary fix",
+    "repo_full_name": "team-eternity/eternity",
+    "body_text": "{   static int painType = -1, skullType;   // EDF FIXME: temporary fix?   if(painType == -1)   {      painType    = E_ThingNumForDEHNum(MT_PAIN);",
+    "body_chars": 145,
+    "rationale": "The comment presents the code as a temporary fix; the author did not implement the proper solution and left this one running.",
+    "obs_pt": "O comentário aponta que o código é uma solução temporária. Mesmo com a uma interrogação, pode-se concluir que o autor não implementou uma solução totalmente adequada, devido à presença de dúvida.",
+    "fonte_obs": "Wendell",
+    "votos": {
+      "Wendell": true,
+      "Bruno": true,
+      "Miguel": true
+    }
+  }
+]
