@@ -67,6 +67,22 @@ CC_POOL_PATH = CC_DIR / "exemplar_pool.json"
 # português) mais a do escopo restrito a comentário de código (inglês, few-shot
 # fixo). Ver panel_prompts_cc.py para por que ela não é mais uma variante.
 STRATEGIES = tuple(panel_prompts.STRATEGIES) + (panel_prompts_cc.STRATEGY,)
+
+# Teto de saída por chamada. 2500 e não menos porque foi o conserto do
+# truncamento que cortava modelo de raciocínio no meio (kimi-k2.5 gasta 757
+# tokens de saída em média, p95 de 977). É também o pior caso que a guarda de
+# custo usa: nos preços do sonnet-5 são US$ 0,025 por chamada.
+MAX_COMPLETION_TOKENS = 2500
+
+# Média de tokens de entrada medida nos runs do dev200, por estratégia do
+# prompt v1. Serve só para a estimativa de pior caso da guarda de custo; o
+# controle que vale é o medidor contra o `usage` real.
+ESTIMATIVA_ENTRADA_V1 = {
+    "zero_shot_nodef": 328,
+    "zero_shot": 542,
+    "fewshot_fixed": 1611,
+    "fewshot_retrieved": 994,
+}
 BATCHES_DIR = ROOT / "validation" / "batches_3anotadores"
 FINAL_DIR = ROOT / "validation" / "resultado_final"
 SAMPLE_DIR = ROOT / "validation" / "sample_final_v2"
@@ -326,6 +342,66 @@ def load_pinned_provider(model: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
+class OrcamentoExcedido(RuntimeError):
+    """Teto de gasto atingido no meio da execução."""
+
+
+class MedidorDeGasto:
+    """Soma o custo real das chamadas e aborta ao bater o teto.
+
+    Existe porque estimativa de custo aqui erra por muito, em três direções:
+
+    1. `max_tokens` é 2500 (necessário para modelo de raciocínio não sair
+       truncado), mas a média medida de saída no dev200 foi 303. O pior caso
+       por chamada é ~8x o esperado, e a saída é o lado caro da tabela.
+    2. A entrada é estimada por caracteres/token calibrado em prosa portuguesa,
+       e o prompt do escopo restrito é inglês.
+    3. Chamada que falha é cobrada e não deixa linha no JSONL. No dev200 os
+       tokens registrados somavam US$ 6,16 e a fatura real foi US$ 20,20.
+
+    Por isso o teto é verificado contra `usage` devolvido pela API, chamada por
+    chamada, e não contra previsão.
+    """
+
+    def __init__(self, teto_usd: float, preco_entrada: float, preco_saida: float):
+        self.teto = teto_usd
+        self.preco_entrada = preco_entrada
+        self.preco_saida = preco_saida
+        self.gasto = 0.0
+        self.chamadas = 0
+        self._lock = threading.Lock()
+
+    def registra(self, prompt_tokens: Optional[int],
+                 completion_tokens: Optional[int]) -> None:
+        custo = ((prompt_tokens or 0) * self.preco_entrada
+                 + (completion_tokens or 0) * self.preco_saida) / 1e6
+        with self._lock:
+            self.gasto += custo
+            self.chamadas += 1
+            if self.gasto > self.teto:
+                raise OrcamentoExcedido(
+                    f"gasto {self.gasto:.4f} US$ passou do teto {self.teto:.2f} US$ "
+                    f"em {self.chamadas} chamadas"
+                )
+
+    def resumo(self) -> str:
+        medio = self.gasto / self.chamadas if self.chamadas else 0.0
+        return (f"{self.chamadas} chamadas, US$ {self.gasto:.4f} "
+                f"({medio*1000:.3f} US$/1k chamadas), teto US$ {self.teto:.2f}")
+
+
+def load_prices(model: str) -> Optional[tuple[float, float]]:
+    """Preços do endpoint fixado, em US$ por milhão de tokens."""
+    if not PROVIDERS_PATH.exists():
+        return None
+    tabela = pd.read_csv(PROVIDERS_PATH)
+    linha = tabela.loc[tabela.model == model]
+    if linha.empty:
+        return None
+    r = linha.iloc[0]
+    return float(r.prompt_usd_mtok), float(r.completion_usd_mtok)
+
+
 def judge_slug(model: str, strategy: str, k: Optional[int],
                reasoning_effort: Optional[str] = None,
                drop_category: bool = False,
@@ -350,7 +426,7 @@ def judge_slug(model: str, strategy: str, k: Optional[int],
 def _call_openrouter(system_prompt: str, user_prompt: str, model: str, api_key: str,
                      max_retries: int = 4, provider: Optional[str] = None,
                      reasoning_effort: Optional[str] = None,
-                     parser=None) -> dict:
+                     parser=None, medidor: "Optional[MedidorDeGasto]" = None) -> dict:
     """Uma chamada, com o mesmo fail-safe do script 03: falha persistente vira
     'incerto' em vez de derrubar a execução ou sumir com o item.
 
@@ -374,7 +450,7 @@ def _call_openrouter(system_prompt: str, user_prompt: str, model: str, api_key: 
         # estratégia, e cada truncamento virava `incerto` de fail-safe: abstenção
         # fabricada por orçamento, não dúvida do modelo. 2.500 dá folga sobre o
         # pior p95 observado sem custar nada a quem gera pouco.
-        "max_tokens": 2500,
+        "max_tokens": MAX_COMPLETION_TOKENS,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -400,8 +476,19 @@ def _call_openrouter(system_prompt: str, user_prompt: str, model: str, api_key: 
             resp = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=90)
             resp.raise_for_status()
             data = resp.json()
-            choice = data["choices"][0]
             usage = data.get("usage") or {}
+
+            # Contabiliza AQUI, antes de qualquer validação. Toda resposta com
+            # HTTP 200 é cobrada, inclusive a que vem truncada, com content
+            # vazio ou com JSON que o parser rejeita — e essas caem no `except`
+            # abaixo e são retentadas. Contabilizar só no sucesso foi o que
+            # produziu a lacuna do dev200: US$ 6,16 em tokens registrados
+            # contra US$ 20,20 de fatura real.
+            if medidor is not None:
+                medidor.registra(usage.get("prompt_tokens"),
+                                 usage.get("completion_tokens"))
+
+            choice = data["choices"][0]
             reasoning_tokens = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
 
             # Erros explícitos em vez de AttributeError/JSONDecodeError crípticos:
@@ -422,6 +509,11 @@ def _call_openrouter(system_prompt: str, user_prompt: str, model: str, api_key: 
             parsed["provider"] = data.get("provider")
             parsed["ok"] = True
             return parsed
+        except OrcamentoExcedido:
+            # Precisa escapar antes do `except Exception` abaixo: é RuntimeError,
+            # e o laço de retentativa a engoliria e reperguntaria ao modelo --
+            # gastando mais justamente por ter estourado o teto.
+            raise
         except Exception as exc:  # noqa: BLE001 — degrada para 'incerto', nunca perde o item
             logger.warning("tentativa %d/%d falhou (%s): %s", attempt, max_retries, model, exc)
             # Backoff exponencial, e mais longo em 429. Com endpoint fixo e sem
@@ -540,8 +632,43 @@ def cmd_run(args: argparse.Namespace) -> None:
         pool = panel_prompts.ExemplarPool(pool_df.to_dict("records"), seed=args.seed)
         logger.info("pool de exemplos: %s (%d itens)", pool_path, len(pool_df))
 
+    # --- guarda de custo ------------------------------------------------
+    precos = (args.price_in, args.price_out)
+    if precos[0] is None or precos[1] is None:
+        precos = load_prices(args.model)
+    if precos is None:
+        raise SystemExit(
+            f"sem preço conhecido para {args.model}. Rode `pick-providers "
+            f"--model {args.model}` (que também fixa o endpoint e torna o juiz "
+            "reproduzível) ou passe --price-in/--price-out explicitamente."
+        )
+    preco_entrada, preco_saida = precos
+
     done = _load_done(out_path)
     pending = [r for r in items.to_dict("records") if str(r["item_id"]) not in done]
+
+    # Pior caso: toda chamada estoura `max_tokens` na saída. Não é cenário
+    # provável, é o limite do que a configuração PODE gastar -- que é o número
+    # relevante para autorizar a execução.
+    if args.strategy == panel_prompts_cc.STRATEGY:
+        entrada_est = panel_prompts_cc.estimate_tokens(args.k)
+    else:
+        entrada_est = ESTIMATIVA_ENTRADA_V1.get(args.strategy, 1700)
+    pior_caso = len(pending) * (
+        entrada_est * preco_entrada + MAX_COMPLETION_TOKENS * preco_saida) / 1e6
+    logger.info("preços: entrada US$ %.3f/Mtok, saída US$ %.3f/Mtok",
+                preco_entrada, preco_saida)
+    logger.info("pior caso para %d itens (saída no teto de %d tokens): US$ %.2f",
+                len(pending), MAX_COMPLETION_TOKENS, pior_caso)
+    if pior_caso > args.max_usd:
+        raise SystemExit(
+            f"pior caso US$ {pior_caso:.2f} passa do teto US$ {args.max_usd:.2f}.\n"
+            f"Suba --max-usd se aceitar a exposição, ou reduza --limit. O teto "
+            f"é verificado de novo contra o gasto real a cada chamada, então "
+            f"a execução para sozinha antes de estourar."
+        )
+    medidor = MedidorDeGasto(args.max_usd, preco_entrada, preco_saida)
+
     logger.info("juiz %s | conjunto %s | %d já feitos, %d pendentes",
                 slug, set_name, len(done), len(pending))
     if not pending:
@@ -569,7 +696,7 @@ def cmd_run(args: argparse.Namespace) -> None:
         result = _call_openrouter(system_prompt, user_prompt, args.model, api_key,
                                   provider=provider,
                                   reasoning_effort=args.reasoning_effort,
-                                  parser=parser)
+                                  parser=parser, medidor=medidor)
         record = {
             "item_id": candidate["item_id"],
             "model": args.model,
@@ -600,10 +727,27 @@ def cmd_run(args: argparse.Namespace) -> None:
                 handle.write(json.dumps(record, ensure_ascii=False) + "\n")
             counter["n"] += 1
             if counter["n"] % 25 == 0:
-                logger.info("  %d/%d", counter["n"], len(pending))
+                logger.info("  %d/%d | US$ %.4f", counter["n"], len(pending),
+                            medidor.gasto)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool_exec:
-        list(pool_exec.map(process, pending))
+        # A contabilização acontece dentro de `_call_openrouter`, por resposta
+        # HTTP, para pegar também a tentativa cobrada que falhou na validação.
+        # Aqui não se soma nada, senão a chamada bem-sucedida contaria em dobro.
+
+    estourou = None
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool_exec:
+            list(pool_exec.map(process, pending))
+    except OrcamentoExcedido as exc:
+        estourou = exc
+
+    logger.info("gasto: %s", medidor.resumo())
+    if estourou is not None:
+        logger.error("ABORTADO por orçamento: %s", estourou)
+        logger.error("os votos já feitos ficaram em %s; rode de novo com "
+                     "--max-usd maior para continuar de onde parou", out_path)
+        _print_run_summary(out_path, items)
+        raise SystemExit(2)
 
     logger.info("concluído: %s", out_path)
     _print_run_summary(out_path, items)
@@ -773,6 +917,15 @@ def parse_args() -> argparse.Namespace:
                                       "(default: validation/panel/cc/exemplar_pool.json)")
     p_run.add_argument("--k", type=int, default=panel_prompts.DEFAULT_RETRIEVED_K,
                        help="número de exemplos recuperados (só para fewshot_retrieved)")
+    p_run.add_argument("--max-usd", type=float, default=2.0,
+                       help="teto de gasto desta execução, em US$. Checado duas "
+                            "vezes: pior caso antes de começar (saída no teto de "
+                            f"{MAX_COMPLETION_TOKENS} tokens) e gasto real a cada "
+                            "chamada. Default conservador de propósito.")
+    p_run.add_argument("--price-in", type=float,
+                       help="US$/Mtok de entrada (default: providers.csv)")
+    p_run.add_argument("--price-out", type=float,
+                       help="US$/Mtok de saída (default: providers.csv)")
     p_run.add_argument("--workers", type=int, default=8)
     p_run.add_argument("--limit", type=int, help="corta o conjunto (para teste de fumaça)")
     p_run.add_argument("--seed", type=int, default=42)
