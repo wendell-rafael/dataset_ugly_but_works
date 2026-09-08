@@ -1,0 +1,4 @@
+,x_ai_grok_4_3_fewshot_cc_k8,minimax_minimax_m2_5_fewshot_cc_k8,qwen_qwen3_14b_fewshot_cc_k8
+x_ai_grok_4_3_fewshot_cc_k8,1.0,0.6107093644993753,0.643611911623439
+minimax_minimax_m2_5_fewshot_cc_k8,0.6107093644993753,1.0,0.5337222172926925
+qwen_qwen3_14b_fewshot_cc_k8,0.643611911623439,0.5337222172926925,1.0

@@ -1,0 +1,5 @@
+regra,alertas,precisao_alerta,cobertura
+melhor juiz sozinho (x_ai_grok_4_3_fewshot_cc_k8),32,0.5,0.6666666666666666
+maioria simples,32,0.5,0.6666666666666666
+ao menos 2 juízes,32,0.5,0.6666666666666666
+unanimidade,19,0.5263157894736842,0.4166666666666667
