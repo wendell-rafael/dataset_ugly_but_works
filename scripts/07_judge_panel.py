@@ -49,6 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pandas as pd  # noqa: E402
 
 import panel_prompts  # noqa: E402
+import panel_prompts_cc  # noqa: E402
 from ubw.envutil import load_dotenv  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,6 +60,13 @@ logger = logging.getLogger("ubw.judge_panel")
 
 PANEL_DIR = ROOT / "validation" / "panel"
 RUNS_DIR = PANEL_DIR / "runs"
+CC_DIR = PANEL_DIR / "cc"
+CC_POOL_PATH = CC_DIR / "exemplar_pool.json"
+
+# Estratégias aceitas por `run`: as quatro do prompt v1 (multi-artefato,
+# português) mais a do escopo restrito a comentário de código (inglês, few-shot
+# fixo). Ver panel_prompts_cc.py para por que ela não é mais uma variante.
+STRATEGIES = tuple(panel_prompts.STRATEGIES) + (panel_prompts_cc.STRATEGY,)
 BATCHES_DIR = ROOT / "validation" / "batches_3anotadores"
 FINAL_DIR = ROOT / "validation" / "resultado_final"
 SAMPLE_DIR = ROOT / "validation" / "sample_final_v2"
@@ -323,7 +331,10 @@ def judge_slug(model: str, strategy: str, k: Optional[int],
                drop_category: bool = False,
                center_window: bool = False) -> str:
     base = re.sub(r"[^a-z0-9]+", "_", f"{model}__{strategy}".lower()).strip("_")
-    if strategy == "fewshot_retrieved" and k:
+    # `fewshot_cc` entra aqui junto com `fewshot_retrieved`: o barrido de k é o
+    # eixo do experimento do escopo restrito, e sem o sufixo os votos de k=2 e
+    # k=8 cairiam no mesmo arquivo, um sobrescrevendo o outro.
+    if strategy in ("fewshot_retrieved", panel_prompts_cc.STRATEGY) and k:
         base = f"{base}_k{k}"
     if reasoning_effort:
         # Sufixo próprio: um mesmo modelo com esforço de raciocínio diferente é
@@ -338,9 +349,17 @@ def judge_slug(model: str, strategy: str, k: Optional[int],
 
 def _call_openrouter(system_prompt: str, user_prompt: str, model: str, api_key: str,
                      max_retries: int = 4, provider: Optional[str] = None,
-                     reasoning_effort: Optional[str] = None) -> dict:
+                     reasoning_effort: Optional[str] = None,
+                     parser=None) -> dict:
     """Uma chamada, com o mesmo fail-safe do script 03: falha persistente vira
-    'incerto' em vez de derrubar a execução ou sumir com o item."""
+    'incerto' em vez de derrubar a execução ou sumir com o item.
+
+    `parser` permite trocar o vocabulário de rótulo esperado. O default valida
+    contra o conjunto português do prompt v1; a estratégia `fewshot_cc` passa
+    `panel_prompts_cc.parse_label`, que aceita o rótulo em inglês e traduz para
+    o canônico. Sem isso toda resposta do prompt novo cairia no fail-safe, e a
+    execução inteira sairia como "incerto" sem erro aparente.
+    """
     import requests
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -396,7 +415,7 @@ def _call_openrouter(system_prompt: str, user_prompt: str, model: str, api_key: 
                     f"content vazio; o modelo gastou o orçamento em raciocínio "
                     f"({reasoning_tokens} tokens)")
 
-            parsed = panel_prompts.parse_llm_json_label(content)
+            parsed = (parser or panel_prompts.parse_llm_json_label)(content)
             parsed["prompt_tokens"] = usage.get("prompt_tokens")
             parsed["completion_tokens"] = usage.get("completion_tokens")
             parsed["reasoning_tokens"] = reasoning_tokens
@@ -485,10 +504,35 @@ def cmd_run(args: argparse.Namespace) -> None:
                        args.model)
 
     pool = None
-    # Só as duas estratégias few-shot precisam de exemplos. `zero_shot_nodef` e
-    # `zero_shot` não: exigir pool delas quebraria a aplicação ao corpus, que não
-    # tem a coluna `is_ubw_gold`.
-    if args.strategy.startswith("fewshot"):
+    cc_pool = None
+    if args.strategy == panel_prompts_cc.STRATEGY:
+        # Pool fixo, vindo do JSON travado por `17_build_cc_eval_set.py`. Não é
+        # um CSV com `is_ubw_gold` como nas outras few-shot: os 8 exemplos já
+        # vêm com rótulo, justificativa em inglês e body_text mascarado, e são
+        # os MESMOS em todos os itens e em toda a aplicação ao corpus.
+        pool_path = Path(args.pool) if args.pool else CC_POOL_PATH
+        if not pool_path.exists():
+            raise SystemExit(
+                f"pool de exemplos não encontrado em {pool_path} — "
+                "rode `python3 scripts/17_build_cc_eval_set.py` primeiro"
+            )
+        cc_pool = panel_prompts_cc.load_exemplar_pool(pool_path)
+        n_pos = sum(1 for e in cc_pool if e["label"] == "UBW-TRUE")
+        if args.k > len(cc_pool):
+            raise SystemExit(
+                f"k={args.k} maior que o pool ({len(cc_pool)} exemplos)"
+            )
+        if args.k // 2 > n_pos or args.k - args.k // 2 > len(cc_pool) - n_pos:
+            raise SystemExit(
+                f"k={args.k} não fecha balanceado com {n_pos} positivos e "
+                f"{len(cc_pool) - n_pos} negativos no pool"
+            )
+        logger.info("pool fixo: %s (%d exemplos, k=%d)",
+                    pool_path, len(cc_pool), args.k)
+    # Só as duas estratégias few-shot do v1 precisam de exemplos recuperados do
+    # próprio conjunto. `zero_shot_nodef` e `zero_shot` não: exigir pool delas
+    # quebraria a aplicação ao corpus, que não tem a coluna `is_ubw_gold`.
+    elif args.strategy.startswith("fewshot"):
         pool_path = Path(args.pool) if args.pool else Path(args.input)
         pool_df = pd.read_csv(pool_path)
         if "is_ubw_gold" not in pool_df.columns:
@@ -509,18 +553,32 @@ def cmd_run(args: argparse.Namespace) -> None:
     def process(row: dict) -> None:
         candidate = dict(row)
         candidate["item_id"] = str(candidate["item_id"])
-        exemplars = pool.exemplars_for(candidate, args.strategy, args.k) if pool else []
-        system_prompt, user_prompt = panel_prompts.build_prompt(
-            candidate, args.strategy, exemplars, drop_category=args.drop_category,
-            center_window=args.center_window)
+        if cc_pool is not None:
+            # `select_exemplars` é a mesma função que o `build_prompt` usa por
+            # dentro, para `exemplar_ids` no JSONL refletir o prompt enviado.
+            exemplars = panel_prompts_cc.select_exemplars(cc_pool, args.k)
+            system_prompt, user_prompt = panel_prompts_cc.build_prompt(
+                candidate, exemplars=cc_pool, k=args.k)
+            parser = panel_prompts_cc.parse_label
+        else:
+            exemplars = pool.exemplars_for(candidate, args.strategy, args.k) if pool else []
+            system_prompt, user_prompt = panel_prompts.build_prompt(
+                candidate, args.strategy, exemplars, drop_category=args.drop_category,
+                center_window=args.center_window)
+            parser = None
         result = _call_openrouter(system_prompt, user_prompt, args.model, api_key,
                                   provider=provider,
-                                  reasoning_effort=args.reasoning_effort)
+                                  reasoning_effort=args.reasoning_effort,
+                                  parser=parser)
         record = {
             "item_id": candidate["item_id"],
             "model": args.model,
             "strategy": args.strategy,
-            "k": args.k if args.strategy == "fewshot_retrieved" else None,
+            # Grava k para as duas estratégias em que ele varia. Antes só
+            # `fewshot_retrieved` era registrada, o que deixaria o barrido de
+            # k do escopo restrito sem a variável no arquivo de saída.
+            "k": args.k if args.strategy in (
+                "fewshot_retrieved", panel_prompts_cc.STRATEGY) else None,
             "reasoning_effort": args.reasoning_effort,
             "drop_category": args.drop_category,
             "center_window": args.center_window,
@@ -708,8 +766,11 @@ def parse_args() -> argparse.Namespace:
     p_run = sub.add_parser("run", help="roda um juiz sobre um conjunto")
     p_run.add_argument("--input", required=True, help="CSV com os itens a julgar")
     p_run.add_argument("--model", required=True, help="slug OpenRouter do modelo")
-    p_run.add_argument("--strategy", choices=panel_prompts.STRATEGIES, default="zero_shot")
-    p_run.add_argument("--pool", help="CSV com os exemplos rotulados (default: o próprio --input)")
+    p_run.add_argument("--strategy", choices=STRATEGIES, default="zero_shot")
+    p_run.add_argument("--pool", help="exemplos rotulados. Para as few-shot do v1, "
+                                      "CSV com is_ubw_gold (default: o próprio --input); "
+                                      f"para {panel_prompts_cc.STRATEGY}, o JSON do pool fixo "
+                                      "(default: validation/panel/cc/exemplar_pool.json)")
     p_run.add_argument("--k", type=int, default=panel_prompts.DEFAULT_RETRIEVED_K,
                        help="número de exemplos recuperados (só para fewshot_retrieved)")
     p_run.add_argument("--workers", type=int, default=8)

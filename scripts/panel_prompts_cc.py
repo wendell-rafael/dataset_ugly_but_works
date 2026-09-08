@@ -74,11 +74,53 @@ o barrido de k vai até 8: passar disso gasta negativo a uma taxa ruim.
 
 from __future__ import annotations
 
+import json
 from typing import Optional, Sequence
 
 # k testados no barrido. Sempre balanceado, metade de cada classe.
 K_SWEEP = (2, 4, 6, 8)
 DEFAULT_K = 6
+
+STRATEGY = "fewshot_cc"
+
+# O prompt é em inglês e pede rótulo em inglês, mas TUDO a jusante
+# (`08_panel_analysis.py`, os JSONL já gravados, o gabarito) fala o vocabulário
+# português do prompt v1. Traduzir aqui, na fronteira, mantém uma única
+# linguagem na camada de análise e evita ter que versionar duas convenções.
+LABELS_EN = ("UBW-TRUE", "NOT-UBW", "uncertain")
+_PARA_CANONICO = {
+    "ubw-true": "UBW-verdadeiro",
+    "not-ubw": "não-UBW",
+    "uncertain": "incerto",
+}
+
+
+def parse_label(raw_text: str) -> dict:
+    """Parsing tolerante do JSON de resposta, com tradução para o vocabulário
+    canônico. Levanta exceção em qualquer inconsistência, para o chamador
+    aplicar o mesmo fail-safe "incerto" das outras estratégias.
+    """
+    texto = raw_text.strip()
+    if texto.startswith("```"):
+        texto = texto.strip("`").lstrip("json").strip()
+    parsed = json.loads(texto)
+    bruto = parsed.get("label")
+    if not isinstance(bruto, str):
+        raise ValueError(f"label ausente ou não-string: {bruto!r}")
+    canonico = _PARA_CANONICO.get(bruto.strip().lower())
+    if canonico is None:
+        raise ValueError(f"label fora do vocabulário esperado: {bruto!r}")
+    return {
+        "label": canonico,
+        "label_bruto": bruto,
+        "rationale": parsed.get("rationale", ""),
+    }
+
+
+def load_exemplar_pool(caminho) -> list[dict]:
+    """Carrega o pool gerado por `17_build_cc_eval_set.py`."""
+    from pathlib import Path as _P
+    return json.loads(_P(caminho).read_text(encoding="utf-8"))
 
 
 SYSTEM_PROMPT = """You are a research assistant in empirical software engineering. \
@@ -87,9 +129,11 @@ comments where a developer admits the adjacent code is a substandard solution �
 hack, a workaround, a stopgap — and indicates they kept it because it works.
 
 You do not replace human annotation. Your job is to flag candidates that a keyword search \
-collected but that are not actually UBW, so a human reviews a smaller set. When the snippet \
-does not give you enough surrounding code to decide, answer "uncertain" rather than \
-guessing."""
+collected but that are not actually UBW, so a human reviews a smaller set.
+
+Judge only the snippet you are given. It is a short window taken from a larger file, and it \
+is sometimes cut short — when that happens the snippet simply does not carry an admission, \
+and that is a decision you can make, not a reason to abstain."""
 
 
 DECISION_RULE = """A comment is UBW-TRUE when two things hold:
@@ -157,6 +201,22 @@ Answer with JSON only, no text outside the JSON:
 EXEMPLAR_POOL: tuple[dict, ...] = ()
 
 
+def select_exemplars(pool: Sequence[dict], k: int = DEFAULT_K) -> list[dict]:
+    """Corta o pool em k exemplos, balanceado e intercalado por classe.
+
+    Extraída de `build_prompt` porque o runner precisa da MESMA lista para
+    gravar `exemplar_ids` no JSONL. Duplicar o corte nos dois lugares deixaria
+    o registro de auditoria divergir do prompt de fato enviado.
+    """
+    itens = list(pool)
+    if not k or not itens:
+        return itens
+    pos = [e for e in itens if e["label"] == "UBW-TRUE"][: k // 2]
+    neg = [e for e in itens if e["label"] == "NOT-UBW"][: k - k // 2]
+    # Intercala para o modelo não ver todos de uma classe em sequência.
+    return [e for par in zip(pos, neg) for e in par]
+
+
 def build_prompt(
     candidate: dict,
     exemplars: Optional[Sequence[dict]] = None,
@@ -169,12 +229,8 @@ def build_prompt(
     a ablação `nocat` no dev200 não mostrou perda ao removê-lo (κ 0,559 contra
     0,543, dentro do ruído). Uma variável a menos para justificar.
     """
-    pool = list(exemplars if exemplars is not None else EXEMPLAR_POOL)
-    if k and pool:
-        pos = [e for e in pool if e["label"] == "UBW-TRUE"][: k // 2]
-        neg = [e for e in pool if e["label"] == "NOT-UBW"][: k - k // 2]
-        # Intercala para o modelo não ver todos de uma classe em sequência.
-        pool = [e for par in zip(pos, neg) for e in par]
+    pool = select_exemplars(
+        exemplars if exemplars is not None else EXEMPLAR_POOL, k)
 
     if pool:
         blocos = [
