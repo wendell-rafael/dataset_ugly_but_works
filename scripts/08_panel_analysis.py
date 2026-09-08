@@ -102,9 +102,25 @@ def load_panel(set_name: str, judges: Optional[list[str]] = None) -> tuple[pd.Da
     `label__<juiz>` por juiz, mais o gabarito humano."""
     gold_path = PANEL_DIR / f"{set_name}.csv"
     if not gold_path.exists():
-        raise SystemExit(f"conjunto não encontrado: {gold_path} (rode 07_judge_panel.py build-gold)")
+        # O conjunto do escopo restrito a code_comment vive em `cc/`, gerado por
+        # `17_build_cc_eval_set.py`, e não por `07_judge_panel.py build-gold`.
+        alternativo = PANEL_DIR / "cc" / f"{set_name}.csv"
+        if alternativo.exists():
+            gold_path = alternativo
+        else:
+            raise SystemExit(
+                f"conjunto não encontrado em {gold_path} nem em {alternativo} "
+                "(rode 07_judge_panel.py build-gold, ou 17_build_cc_eval_set.py "
+                "para o escopo code_comment)")
     gold = pd.read_csv(gold_path)
     gold["item_id"] = gold["item_id"].astype(str)
+
+    # O conjunto do escopo restrito chama a coluna de gabarito `gold`; o
+    # formato antigo chama `is_ubw_gold`, e há 14 pontos deste arquivo que
+    # dependem desse nome. Renomear aqui, na fronteira, é a mudança de um
+    # ponto -- e evita que as duas convenções circulem pela análise.
+    if "is_ubw_gold" not in gold.columns and "gold" in gold.columns:
+        gold = gold.rename(columns={"gold": "is_ubw_gold"})
 
     run_dir = RUNS_DIR / set_name
     if not run_dir.exists():

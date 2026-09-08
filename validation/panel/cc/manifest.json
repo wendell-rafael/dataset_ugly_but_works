@@ -1,6 +1,6 @@
 {
   "script": "17_build_cc_eval_set.py",
-  "gerado_em_utc": "2026-09-08T00:49:48.780292+00:00",
+  "gerado_em_utc": "2026-09-08T09:55:27.745323+00:00",
   "prompt": "scripts/panel_prompts_cc.py",
   "exemplos": 8,
   "exemplos_item_id": [
