@@ -617,7 +617,17 @@ def choose_rule(metrics: pd.DataFrame, rules: pd.DataFrame, effective_votes: flo
 
 
 def _fmt(df: pd.DataFrame) -> str:
-    return df.to_markdown(index=False, floatfmt=".3f")
+    """Tabela em Markdown, com texto puro como reserva.
+
+    `to_markdown` depende de `tabulate`, que não é dependência do resto do
+    pipeline. Faltar uma biblioteca de formatação não é motivo para perder um
+    relatório cujos números já estão calculados — e os CSV ao lado têm o dado
+    completo de qualquer forma.
+    """
+    try:
+        return df.to_markdown(index=False, floatfmt=".3f")
+    except ImportError:
+        return df.to_string(index=False, float_format=lambda v: f"{v:.3f}")
 
 
 def cmd_report(args: argparse.Namespace) -> None:
@@ -675,8 +685,16 @@ def cmd_report(args: argparse.Namespace) -> None:
 
     # QP1: desempenho por tipo de artefato e por expressão do léxico, restrito ao
     # painel para que a tabela caiba na leitura.
-    by_artifact = metrics_by_dimension(wide, panel, "artifact_type")
-    by_artifact.to_csv(ANALYSIS_DIR / f"{args.set}__by_artifact.csv", index=False)
+    # `artifact_type` não existe no conjunto do escopo restrito: lá tudo é
+    # code_comment, e a coluna foi descartada por ser constante. A quebra por
+    # artefato simplesmente não se aplica, então é omitida em vez de forçada.
+    if "artifact_type" in wide.columns:
+        by_artifact = metrics_by_dimension(wide, panel, "artifact_type")
+        by_artifact.to_csv(ANALYSIS_DIR / f"{args.set}__by_artifact.csv", index=False)
+    else:
+        by_artifact = pd.DataFrame()
+        logger.info("sem coluna artifact_type no conjunto — quebra por artefato "
+                    "omitida (escopo de artefato único)")
     by_expression = metrics_by_dimension(wide, panel, "matched_expression")
     by_expression.to_csv(ANALYSIS_DIR / f"{args.set}__by_expression.csv", index=False)
 
@@ -732,13 +750,14 @@ def cmd_report(args: argparse.Namespace) -> None:
         "",
         "Referência — kappa humano-humano, par a par, neste conjunto:",
         "",
-        human_pairs.to_markdown(index=False, floatfmt=".3f") if not human_pairs.empty else "(sem votos individuais)",
+        _fmt(human_pairs) if not human_pairs.empty else "(sem votos individuais)",
         "",
         _fmt(vs_annotators) if not vs_annotators.empty else "(sem colunas vote__<anotador> — rode build-gold atualizado)",
         "",
         "### Desempenho por tipo de artefato (QP1)",
         "",
-        _fmt(by_artifact),
+        _fmt(by_artifact) if not by_artifact.empty
+        else "(escopo de artefato único — quebra não se aplica)",
         "",
         "### Desempenho por expressão do léxico (QP1)",
         "",
@@ -752,7 +771,7 @@ def cmd_report(args: argparse.Namespace) -> None:
         "",
         "Kappa juiz-juiz sobre o alerta:",
         "",
-        agreement.to_markdown(floatfmt=".3f"),
+        _fmt(agreement.reset_index()),
         "",
         f"Correlação média entre os vetores de erro: {rho:.3f}. "
         f"Votos efetivamente independentes: **{effective:.2f}** de {len(panel)}.",

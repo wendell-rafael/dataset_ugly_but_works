@@ -50,9 +50,17 @@ roda() {  # $1 modelo, $2 k, $3 teto
 
 case "${1:-baratos}" in
   baratos) for m in "${BARATOS[@]}"; do for k in 2 8; do roda "$m" "$k" 0.30; done; done ;;
-  resto)   for m in "${RESTO[@]}";   do for k in 2 8; do roda "$m" "$k" 0.80; done; done
-           # grok custa ~6x a mediana dos outros; teto próprio.
-           for k in 2 8; do roda x-ai/grok-4.3 "$k" 2.00; done ;;
+  resto)   # Só k=8. No bloco dos quatro modelos pequenos, k=8 quase dobrou o
+           # kappa contra k=2 (qwen3-14b: 0,265 -> 0,465; qwen3-32b: 0,190 ->
+           # 0,376), e a única inversão foi pequena (gemma-3-12b). Testar k=2 de
+           # novo custaria ~40% do bloco para medir a configuração perdedora.
+           #
+           # Provedores: gemma-3-27b e llama-3.3-70b estão os dois na Novita, e
+           # a execução em série já garante que não competem. Rodar dois
+           # processos no mesmo endpoint com allow_fallbacks:false foi o que
+           # produziu 11 itens perdidos por 429 no bloco anterior.
+           for m in "${RESTO[@]}"; do roda "$m" 8 0.80; done
+           roda x-ai/grok-4.3 8 2.00 ;;  # ~6x a mediana; teto próprio
   sonnet)  # Só k=8 e subconjunto: responde "o teto é do modelo ou da tarefa?",
            # que precisa de sinal, não de margem estreita. Nunca vai ao corpus.
            roda anthropic/claude-sonnet-5 8 2.20 ;;

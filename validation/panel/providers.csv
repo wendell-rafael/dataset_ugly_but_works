@@ -3,10 +3,10 @@ anthropic/claude-sonnet-5,Claude Platform on AWS,unknown,2.0,10.0,1000000,9,unkn
 deepseek/deepseek-chat,DeepInfra,fp4,0.32,0.89,163840,2,"fp4,unknown"
 deepseek/deepseek-v3.2-exp,Novita,fp8,0.27,0.41,163840,3,fp8
 google/gemma-3-12b-it,DeepInfra,bf16,0.05,0.15,131072,1,bf16
-google/gemma-3-27b-it,Novita,bf16,0.119,0.2,98304,4,"bf16,fp8"
+google/gemma-3-27b-it,DeepInfra,fp8,0.08,0.16,98304,4,"bf16,fp8"
 google/gemma-3-4b-it,DeepInfra,bf16,0.05,0.1,131072,1,bf16
 meta-llama/llama-3.1-8b-instruct,CoreWeave,bf16,0.22,0.22,131072,5,"bf16,fp8,unknown"
-meta-llama/llama-3.3-70b-instruct,Novita,bf16,0.135,0.4,12288,13,"bf16,fp16,fp8,unknown"
+meta-llama/llama-3.3-70b-instruct,DeepInfra,fp8,0.1,0.32,12288,13,"bf16,fp16,fp8,unknown"
 minimax/minimax-m2.5,AtlasCloud,fp8,0.295,1.2,196608,9,"fp8,unknown"
 mistralai/mistral-small-3.2-24b-instruct,Parasail,bf16,0.09,0.3,131072,2,"bf16,fp8"
 moonshotai/kimi-k2.5,DeepInfra,fp4,0.45,2.25,262144,8,"fp4,int4,unknown"
