@@ -325,8 +325,23 @@ def cmd_pick_providers(args: argparse.Namespace) -> None:
     table = pd.DataFrame(rows)
     print(table.to_string(index=False))
     PROVIDERS_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    # Mescla em vez de sobrescrever. Antes o arquivo era substituído pelos
+    # modelos desta invocação, então rodar `pick-providers` para um modelo novo
+    # apagava silenciosamente o endpoint fixado de todos os outros -- e, como o
+    # `run` recusa modelo sem preço, o sintoma aparecia longe da causa.
+    if PROVIDERS_PATH.exists():
+        anterior = pd.read_csv(PROVIDERS_PATH)
+        mantidos = anterior.loc[~anterior.model.isin(table.model)]
+        n_atualizados = len(anterior) - len(mantidos)
+        table = pd.concat([mantidos, table], ignore_index=True)
+        if n_atualizados:
+            logger.info("%d modelo(s) já presente(s) foram atualizados",
+                        n_atualizados)
+    table = table.sort_values("model").reset_index(drop=True)
     table.to_csv(PROVIDERS_PATH, index=False)
-    logger.info("escolha de provedores gravada em %s", PROVIDERS_PATH)
+    logger.info("escolha de provedores gravada em %s (%d modelos no total)",
+                PROVIDERS_PATH, len(table))
 
 
 def load_pinned_provider(model: str) -> Optional[str]:
@@ -426,7 +441,8 @@ def judge_slug(model: str, strategy: str, k: Optional[int],
 def _call_openrouter(system_prompt: str, user_prompt: str, model: str, api_key: str,
                      max_retries: int = 4, provider: Optional[str] = None,
                      reasoning_effort: Optional[str] = None,
-                     parser=None, medidor: "Optional[MedidorDeGasto]" = None) -> dict:
+                     parser=None, medidor: "Optional[MedidorDeGasto]" = None,
+                     max_completion_tokens: int = MAX_COMPLETION_TOKENS) -> dict:
     """Uma chamada, com o mesmo fail-safe do script 03: falha persistente vira
     'incerto' em vez de derrubar a execução ou sumir com o item.
 
@@ -450,7 +466,7 @@ def _call_openrouter(system_prompt: str, user_prompt: str, model: str, api_key: 
         # estratégia, e cada truncamento virava `incerto` de fail-safe: abstenção
         # fabricada por orçamento, não dúvida do modelo. 2.500 dá folga sobre o
         # pior p95 observado sem custar nada a quem gera pouco.
-        "max_tokens": MAX_COMPLETION_TOKENS,
+        "max_tokens": max_completion_tokens,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -655,11 +671,12 @@ def cmd_run(args: argparse.Namespace) -> None:
     else:
         entrada_est = ESTIMATIVA_ENTRADA_V1.get(args.strategy, 1700)
     pior_caso = len(pending) * (
-        entrada_est * preco_entrada + MAX_COMPLETION_TOKENS * preco_saida) / 1e6
+        entrada_est * preco_entrada
+        + args.max_completion_tokens * preco_saida) / 1e6
     logger.info("preços: entrada US$ %.3f/Mtok, saída US$ %.3f/Mtok",
                 preco_entrada, preco_saida)
     logger.info("pior caso para %d itens (saída no teto de %d tokens): US$ %.2f",
-                len(pending), MAX_COMPLETION_TOKENS, pior_caso)
+                len(pending), args.max_completion_tokens, pior_caso)
     if pior_caso > args.max_usd:
         raise SystemExit(
             f"pior caso US$ {pior_caso:.2f} passa do teto US$ {args.max_usd:.2f}.\n"
@@ -696,7 +713,8 @@ def cmd_run(args: argparse.Namespace) -> None:
         result = _call_openrouter(system_prompt, user_prompt, args.model, api_key,
                                   provider=provider,
                                   reasoning_effort=args.reasoning_effort,
-                                  parser=parser, medidor=medidor)
+                                  parser=parser, medidor=medidor,
+                                  max_completion_tokens=args.max_completion_tokens)
         record = {
             "item_id": candidate["item_id"],
             "model": args.model,
@@ -917,6 +935,17 @@ def parse_args() -> argparse.Namespace:
                                       "(default: validation/panel/cc/exemplar_pool.json)")
     p_run.add_argument("--k", type=int, default=panel_prompts.DEFAULT_RETRIEVED_K,
                        help="número de exemplos recuperados (só para fewshot_retrieved)")
+    p_run.add_argument("--max-completion-tokens", type=int,
+                       default=MAX_COMPLETION_TOKENS,
+                       help="teto de saída por chamada. O default de "
+                            f"{MAX_COMPLETION_TOKENS} existe para modelo de "
+                            "raciocínio não sair truncado, mas é a folga que "
+                            "domina o pior caso da guarda de custo. Medido no "
+                            "qwen3-32b com este prompt: 215-514 tokens de "
+                            "saída, então 1000 basta para modelo sem "
+                            "raciocínio e corta o pior caso em 2,5x. Baixar "
+                            "demais reintroduz o defeito de truncamento — "
+                            "conferir `finish_reason` no log.")
     p_run.add_argument("--max-usd", type=float, default=2.0,
                        help="teto de gasto desta execução, em US$. Checado duas "
                             "vezes: pior caso antes de começar (saída no teto de "
