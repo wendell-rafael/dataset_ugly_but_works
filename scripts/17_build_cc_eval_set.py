@@ -248,8 +248,17 @@ def main() -> int:
     herdados["gold"] = herdados[col_gold].astype(bool)
     herdados["item_id"] = [f"h{i:04d}" for i in range(1, len(herdados) + 1)]
 
+    # Voto individual de cada anotador, não só a maioria. O achado mais forte do
+    # dev200 foi a assimetria por anotador (os 10 modelos concordavam menos com
+    # Wendell), e sem estas colunas a análise não pode ser repetida aqui. As
+    # duas fontes usam nomes diferentes -- `voto__` nos 269, `vote__` nos 385.
+    for nome in ("Wendell", "Bruno", "Miguel"):
+        restantes[f"vote__{nome}"] = restantes[f"voto__{nome}"].astype(bool)
+        herdados[f"vote__{nome}"] = herdados[f"vote__{nome}"].astype(bool)
+
     campos = ["item_id", "origem", "repo_full_name", "matched_expression",
-              "body_text", "url", "gold"]
+              "body_text", "url", "gold",
+              "vote__Wendell", "vote__Bruno", "vote__Miguel"]
     aval = pd.concat([restantes[campos], herdados[campos]], ignore_index=True)
 
     corpos, contas_aval = [], {}
