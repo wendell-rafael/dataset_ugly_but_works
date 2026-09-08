@@ -1,10 +1,13 @@
 {
   "conjunto": "eval_371",
   "juizes_carregados": [
+    "anthropic_claude_sonnet_5_fewshot_cc_k8",
     "google_gemma_3_12b_it_fewshot_cc_k2",
     "google_gemma_3_12b_it_fewshot_cc_k8",
+    "google_gemma_3_27b_it_fewshot_cc_k8",
     "google_gemma_3_4b_it_fewshot_cc_k8",
     "meta_llama_llama_3_1_8b_instruct_fewshot_cc_k8",
+    "meta_llama_llama_3_3_70b_instruct_fewshot_cc_k8",
     "minimax_minimax_m2_5_fewshot_cc_k8",
     "qwen_qwen3_14b_fewshot_cc_k2",
     "qwen_qwen3_14b_fewshot_cc_k8",
@@ -17,6 +20,7 @@
   "eliminados_por_kappa": [
     "google_gemma_3_12b_it_fewshot_cc_k2",
     "google_gemma_3_12b_it_fewshot_cc_k8",
+    "google_gemma_3_27b_it_fewshot_cc_k8",
     "google_gemma_3_4b_it_fewshot_cc_k8",
     "meta_llama_llama_3_1_8b_instruct_fewshot_cc_k8",
     "qwen_qwen3_14b_fewshot_cc_k2",
@@ -26,13 +30,13 @@
     "qwen_qwen3_8b_fewshot_cc_k8"
   ],
   "painel": [
+    "anthropic_claude_sonnet_5_fewshot_cc_k8",
     "x_ai_grok_4_3_fewshot_cc_k8",
-    "minimax_minimax_m2_5_fewshot_cc_k8",
-    "qwen_qwen3_14b_fewshot_cc_k8"
+    "minimax_minimax_m2_5_fewshot_cc_k8"
   ],
-  "melhor_juiz": "x_ai_grok_4_3_fewshot_cc_k8",
-  "rho_erro_medio": 0.596014497805169,
-  "votos_efetivos": 1.368595035014441,
-  "regra_escolhida": "melhor juiz sozinho (x_ai_grok_4_3_fewshot_cc_k8)",
-  "justificativa": "votos efetivos = 1.37, abaixo de 2: os juízes erram nos mesmos itens e o painel é redundante. Agregar seria cosmético."
+  "melhor_juiz": "anthropic_claude_sonnet_5_fewshot_cc_k8",
+  "rho_erro_medio": 0.7087555898202936,
+  "votos_efetivos": 1.2409456573623838,
+  "regra_escolhida": "melhor juiz sozinho (anthropic_claude_sonnet_5_fewshot_cc_k8)",
+  "justificativa": "votos efetivos = 1.24, abaixo de 2: os juízes erram nos mesmos itens e o painel é redundante. Agregar seria cosmético."
 }
