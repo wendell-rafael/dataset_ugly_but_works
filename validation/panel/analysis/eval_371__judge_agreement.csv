@@ -1,4 +1,4 @@
-,x_ai_grok_4_3_fewshot_cc_k8,minimax_minimax_m2_5_fewshot_cc_k8,qwen_qwen3_14b_fewshot_cc_k8
-x_ai_grok_4_3_fewshot_cc_k8,1.0,0.6966948261766652,0.6914760914760918
-minimax_minimax_m2_5_fewshot_cc_k8,0.6966948261766652,1.0,0.6042919919791802
-qwen_qwen3_14b_fewshot_cc_k8,0.6914760914760918,0.6042919919791802,1.0
+,anthropic_claude_sonnet_5_fewshot_cc_k8,x_ai_grok_4_3_fewshot_cc_k8,minimax_minimax_m2_5_fewshot_cc_k8
+anthropic_claude_sonnet_5_fewshot_cc_k8,1.0,0.8974004424778764,0.7255810332074589
+x_ai_grok_4_3_fewshot_cc_k8,0.8974004424778764,1.0,0.6966948261766652
+minimax_minimax_m2_5_fewshot_cc_k8,0.7255810332074589,0.6966948261766652,1.0
