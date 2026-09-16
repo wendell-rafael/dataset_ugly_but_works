@@ -1,0 +1,5 @@
+corte,valor,n,positivos,precisao,ic95_low,ic95_high,largura_pp
+Global,todos,385,357,0.9273,0.8969,0.9492,5.2
+tipo de artefato,code_comment,110,104,0.9455,0.8861,0.9748,8.9
+tipo de artefato,commit_message,182,169,0.9286,0.8816,0.9578,7.6
+tipo de artefato,pr_body,93,84,0.9032,0.8262,0.9482,12.2

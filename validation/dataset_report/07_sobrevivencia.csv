@@ -1,0 +1,4 @@
+artefato,registros,evento_observado,taxa_evento,dias_mediana_ate_evento,significado_do_evento
+commit_message,43351,0,0.0,,"fechamento/merge do artefato, NÃO é remoção de dívida"
+code_comment,26036,13846,0.5318,83.0,remoção do comentário (git log -S)
+pr_body,22071,21436,0.9712,0.0,"fechamento/merge do artefato, NÃO é remoção de dívida"

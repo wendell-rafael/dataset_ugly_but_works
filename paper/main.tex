@@ -1,0 +1,264 @@
+\documentclass[10pt,conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\graphicspath{{figs/}}
+
+\begin{document}
+
+\title{UBWSet: A Dataset of Ugly-But-It-Works\\ Comments Mined from Git Histories}
+
+\author{
+\IEEEauthorblockN{Wendell Rafael Oliveira Nascimento and
+                  Jo\~{a}o Arthur Brunet Monteiro}
+\IEEEauthorblockA{\textit{Programa de Pós-Graduação em Ciência da Computação} \\
+\textit{Universidade Federal de Campina Grande}\\
+Campina Grande, Brazil}
+}
+
+\maketitle
+
+\begin{abstract}
+
+This paper presents UBWSet, a dataset of source code comments that record a specific subtype of Self-Admitted Technical Debt (SATD): situations in which developers recognize a solution as technically inadequate, improvised, or inelegant, but decide to keep it because it works. This phenomenon, referred to here as \emph{ugly but it works} (UBW), expresses an evaluation recorded in the code and the conscious acceptance of the current state of the system.
+
+UBWSet comprises 26,029 comments mined from the complete histories of 9,584 public GitHub repositories, covering 42 programming languages. Each record contains code context, the matched expression, repository provenance, introduction commit, a link to the original evidence, and information about removal and survival time. Three independent annotators validated the mining procedure on a random sample of 379 records, yielding an estimated precision of 92.6\% (95\% Wilson confidence interval: 89.5\%--94.8\%). The dataset, lexicon, and mining code are publicly available to support research on SATD, software maintenance, and software evolution.
+
+\end{abstract}
+
+\begin{IEEEkeywords}
+self-admitted technical debt, technical debt, source code comments, mining software repositories, software maintenance
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:intro}
+
+Self-Admitted Technical Debt (SATD) occurs when developers explicitly record limitations or technical problems in project artifacts \cite{potdar2014exploratory,maldonado2015detecting}. Code comments are an important source of such records because they preserve, alongside the implementation, the assessment of those who wrote or maintained it. Previous studies have shown that SATD can take several forms, including pending work, known defects, and incomplete documentation.
+
+However, these situations do not express the same stance towards a problem. A comment such as \texttt{TODO} or \texttt{FIXME} usually points to work that still needs to be done. In contrast, \emph{ugly but it works} comments express something different: developers recognize that a solution is not ideal, but accept keeping it because it satisfies the system's current needs. One example found in our corpus states: ``Quick and dirty testrunner hack, it's ugly but it works.'' In this case, the comment does not announce future work. Instead, it justifies retaining a solution that the developer considers inadequate.
+
+In this work, we refer to this phenomenon as \emph{ugly but it works} (UBW). It is a subtype of SATD because it involves the explicit recognition of a suboptimal decision. Its defining characteristic, however, is not the nature of the problem, such as design, testing, or documentation debt. It lies in the developer's expressed assessment: the solution is considered undesirable but accepted because it works. This distinction makes it possible to study a specific software maintenance practice: the deliberate coexistence with solutions that are recognized as imperfect \cite{maipradit2020wait}.
+
+Existing SATD datasets have supported the automatic identification of technical debt and the classification of its types \cite{huang2018textmining}. Nevertheless, they generally treat SATD as a broad category and do not separate UBW admissions from comments about pending work or limitations. Moreover, many datasets are obtained from the current version of repositories, which prevents the observation of comments that were introduced and later removed. This information is necessary to investigate how long a UBW admission remains in a project \cite{maldonado2017removal}.
+
+UBWSet comprises comments identified through expressions associated with the acceptance of technically unsatisfactory solutions. The records were extracted from the complete histories of public GitHub repositories and cover different programming languages. To make each occurrence verifiable and analyzable in context, the dataset links the comment to its code context, file, repository, introduction commit, and original evidence on GitHub. When a comment was removed, the record also preserves this information and its time of survival in the project.
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related} presents related datasets. Section~\ref{sec:construction} describes the construction of UBWSet, including the lexicon, historical collection, filtering, and annotation protocol. Section~\ref{sec:schema} presents the schema and structure of the released records. Section~\ref{sec:utility} discusses the dataset's utility, precision, and potential analyses. Finally, Section~\ref{sec:limitations} presents limitations and future work, and Section~\ref{sec:conclusion} concludes the paper.
+
+\section{Related Datasets}
+\label{sec:related}
+
+Research on Self-Admitted Technical Debt began with the study by Potdar and
+Shihab \cite{potdar2014exploratory}, who analyzed 101,762 source code comments
+from four open-source projects. They identified textual patterns associated with
+temporary solutions, incomplete implementations, and other technical problems
+recognized by developers themselves. However, the study approached SATD broadly
+and did not distinguish cases in which an implementation considered inadequate is
+retained because it still works.
+
+Maldonado and Shihab \cite{maldonado2015detecting} advanced this line of work by
+manually classifying 33,093 comments from five projects into five SATD types:
+design, defect, documentation, requirement, and test debt. This dataset enables
+the examination of the technical problem described in a comment. UBW follows a
+different logic: an occurrence may concern design, testing, or documentation, but
+belongs to the dataset only when the author recognizes the solution as inadequate
+and nevertheless retains it for its practical utility.
+
+PENTACET, by Sridharan, Rantala, and M{\"a}ntyl{\"a}
+\cite{sridharan2023pentacet}, provides scale and context for SATD research. It
+contains approximately 23 million comments, together with preceding and
+succeeding code context, mined from 9,096 Java projects. More than 250,000
+comments are identified as SATD. Despite this scale, the dataset retains SATD as a
+general category and does not distinguish the functional acceptance of a
+technically unsatisfactory solution.
+
+Huang et al. \cite{huang2025shortterm} investigate short-term SATD and therefore
+provide the closest temporal perspective to UBWSet. The two studies, however,
+start from different criteria. Huang et al. select occurrences according to their
+observed duration; UBWSet selects comments according to the language used by
+developers, while preserving duration for subsequent analysis.
+
+Another relevant distinction concerns datasets based on markers such as
+\texttt{TODO}, \texttt{FIXME}, \texttt{HACK}, and \texttt{XXX}. Rantala,
+M{\"a}ntyl{\"a}, and Lo \cite{rantala2020klsatd} call these cases
+\emph{Keyword-Labeled SATD} (KL-SATD). Such markers are useful evidence of
+technical debt, but they generally signal an expected pending task, correction, or
+change. They do not require a comment to express the conscious retention of a
+solution considered inadequate. This is not an artificial inflation of SATD counts,
+but a different operational definition from the one adopted by UBWSet.
+
+Early SATD datasets were assembled from a small number of large, established
+projects. PENTACET substantially broadened the number of repositories, but
+remained limited to Java. UBWSet contains 26,029 comments from 9,584 public
+GitHub repositories whose primary languages span 42 languages. It therefore
+extends coverage to more diverse ecosystems while retaining the ability to trace
+each occurrence to its introduction, removal, or continued presence in the
+project's history.
+
+To the best of our knowledge, no public dataset is dedicated to comments in which
+developers recognize an implementation as technically unsatisfactory but choose to
+retain it because it works. UBWSet complements existing resources by combining
+this textual phenomenon with code context, repository provenance, and lifecycle
+information for each occurrence.
+
+\begin{table}[H]
+\centering
+\caption{How UBWSet differs from related SATD resources.}
+\label{tab:related-datasets}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{>{\raggedright\arraybackslash}p{1.85cm} >{\raggedright\arraybackslash}p{5.45cm}}
+\toprule
+\textbf{Resource} & \textbf{Key difference} \\
+\midrule
+Potdar and Shihab (2014) & General SATD patterns, without a UBW-specific label. \\
+
+Maldonado and Shihab (2015) & Classifies debt types; UBWSet focuses on the developer's stance toward a solution. \\
+
+PENTACET (2023) & Large contextual Java resource that labels generic SATD rather than UBW. \\
+
+Huang et al. (2025) & Selects SATD by duration; UBWSet selects comments by declared acceptance. \\
+
+Rantala et al. (2020) & Uses keyword labels, which do not require functional acceptance. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Dataset Construction}
+\label{sec:construction}
+
+\subsection{Lexicon Construction}
+
+\textit{Origem das 25 expressões e critérios de inclusão e remoção. Declarar o
+desequilíbrio: ``this is a hack'' é 25,9\% dos registros, as três primeiras
+somam 63,9\%, e 24 das 25 expressões aparecem — ``terrible but works'' tem zero.}
+
+\subsection{Data Collection}
+
+\textit{O dataset publicado é só comentário de código; commit e PR foram
+coletados mas não publicados (motivo na Seção~\ref{sec:limitations}). Mostrar
+que coletar sobre o HEAD só recupera o que sobreviveu: como 53,2\% das
+admissões já foram removidas, a coleta é feita por pickaxe (\texttt{git log -S})
+sobre o histórico completo, pareando eventos de introdução e remoção. Frame de
+74.807 repositórios triados, corte em 23/07/2026.}
+
+\subsection{Filtering}
+
+\textit{Funil até 26.029: corpus consolidado de 116.192, recorte de comentário
+de código em 26.036, menos 7 registros sem expressão visível após mascaramento.
+Nomear os filtros de coleta (bot, casamento literal normalizado, arquivo
+gerado). Incluir o reparo de contexto: 571 janelas reconstruídas a partir do
+arquivo no commit de introdução, 68 linhas corrigidas, e 100\% dos registros
+publicados exibindo a expressão.}
+
+\subsection{Annotation Protocol}
+
+\textit{Quem anotou e qual o critério operacional de UBW. Amostra de 379
+registros, aleatória simples dentro do estrato, semente fixa; justificar o
+tamanho por Cochran (95\% de confiança, margem de 5\%, p = 0,50). Anotação
+independente, discussão das divergências, e critérios congelados antes da
+rodada final.}
+
+\subsection{Annotator Agreement}
+
+\textit{Reportar as duas fases: medição cega (\(\kappa\) 0,840 / 0,711 / 0,657)
+e pós-discussão (0,925 / 0,872 / 0,844). Com 92,6\% de positivos o \(\kappa\)
+fica deprimido por construção, então reportar também concordância bruta e AC1,
+sem aplicar a escala de Landis \& Koch ao AC1. Se o espaço apertar (são só 4
+páginas), esta subseção vira o último parágrafo da anterior.}
+
+\section{Dataset Schema}
+\label{sec:schema}
+
+\textit{Os 23 campos agrupados por família em uma tabela: identificação,
+conteúdo, ciclo de vida, contexto do repositório e qualidade. Esta última
+(\texttt{context\_reconstructed}, \texttt{context\_truncated\_at\_2000\_chars},
+\texttt{context\_sha256}, \texttt{repositories\_with\_same\_context}) é
+argumento de reusabilidade: permite filtrar por procedência e controlar
+duplicação. Formato CSV, dados em CC BY 4.0 e código em MIT, DOI
+10.5281/zenodo.22775107, trechos de código sob a licença do repositório de
+origem.}
+
+\section{Dataset Utility}
+\label{sec:utility}
+
+\subsection{Prior Use}
+
+\textit{Requisito do CFP. Duas frases: o dataset ainda não foi usado em
+publicação; a validação humana da Seção~\ref{sec:construction} é o único uso
+até agora.}
+
+\subsection{Lexicon Precision}
+
+\textit{Precisão de 92,6\% (351/379), IC de Wilson [89,5\%--94,8\%]. Uma frase
+justificando o 379 e outra justificando Wilson em vez de Wald, já que a
+proporção está perto de 1.}
+
+\subsection{Lexicon Composition}
+
+\textit{Antes chamada de \emph{Coverage} --- o nome prometia recall, que não é
+mensurável com léxico fechado. Distribuição das expressões (concentração e
+cauda) e das 42 linguagens: C++ 5.780, Python 5.077, TypeScript 3.247, C 3.023,
+Java 2.780.}
+
+\subsection{Temporal Distribution}
+
+\textit{Introduções por ano, de 1990 a 2026, com mediana em 2019. Demonstra
+cobertura longitudinal e justifica a coleta histórica da
+Seção~\ref{sec:construction}.}
+
+\subsection{Survival of UBW Admissions}
+
+\textit{Descritivo apenas --- o CFP exclui estudos empíricos desta trilha, então
+Kaplan-Meier com log-rank e Cox ficam para o technical paper. 13.840 admissões
+removidas (53,2\%), 12.189 censuradas à direita, mediana de 83 dias, dentro da
+faixa de 18 a 172 dias que Maldonado et al. reportam para SATD genérico. Fecha o
+argumento da coleta histórica.}
+
+\subsection{Future Research Questions}
+
+\textit{Três ou quatro bullets curtos, cada um amarrado a um campo do schema.
+Requisito do CFP.}
+
+\section{Limitations and Future Work}
+\label{sec:limitations}
+
+\textit{Limitações: léxico fechado mede precisão e não recall; 7.390 registros
+(28,4\%) têm contexto idêntico em outro repositório, por fork ou vendoring, e
+não são independentes; a unidade de observação é a janela de \(\pm\)3 linhas,
+com 525 contextos (2,0\%) truncados em 2.000 caracteres; a precisão medida é do
+pipeline, não do léxico isolado; e o escopo é de um artefato só --- commit e PR
+ficaram de fora porque, quanto mais distante do código, menos a admissão se
+refere ao código presente, e porque para eles o evento de remoção é fechamento
+ou merge, que não é remoção de dívida.}
+
+\textit{Melhorias futuras, que o CFP exige: expandir o léxico e re-minerar,
+estender a admissões em outras línguas naturais, atualizar o corpus
+periodicamente com versionamento por DOI, e publicar o recorte de commit e PR
+como release separado. Uma frase sobre a triagem automática por painel de LLM,
+que foi avaliada e não atingiu o limiar de precisão fixado antes da execução ---
+o motivo não pode ser incapacidade de execução, porque o código vai junto no
+registro.}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+\textit{Não repetir o abstract. Fechar no que o dataset permite fazer, que é o
+critério da trilha.}
+
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+\end{document}

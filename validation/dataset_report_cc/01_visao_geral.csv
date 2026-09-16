@@ -1,0 +1,14 @@
+Métrica,Valor
+Registros no corpus bruto,"116,192"
+Repositórios no corpus bruto,"26,667"
+Registros no frame (sem issue_body),"91,458"
+Escopo do relatório,code_comment
+Participação do escopo no frame,28.5%
+Registros no escopo,"26,036"
+Repositórios com ao menos uma ocorrência,"9,584"
+Expressões do léxico,25
+Expressões com ao menos uma ocorrência,24
+Linguagens principais distintas,42
+Primeira ocorrência,1990-06-05
+Última ocorrência,2026-07-23
+Comprimento mediano do texto (caracteres),304

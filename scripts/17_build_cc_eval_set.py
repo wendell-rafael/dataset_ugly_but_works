@@ -6,8 +6,10 @@ Duas saídas, ambas versionadas:
 1. `validation/panel/cc/exemplar_pool.json` — os 8 exemplos do few-shot fixo
    (4 positivos, 4 negativos), com `body_text` MASCARADO, a observação original
    do anotador em português e a tradução para o inglês que vai no prompt.
-2. `validation/panel/cc/eval_371.csv` — o conjunto de avaliação: os 379
-   comentários de código com gabarito humano MENOS os 8 usados como exemplo.
+2. `validation/panel/cc/human_gold_379.csv` — o gabarito humano completo usado
+   para estimar a precisão do dataset.
+3. `validation/panel/cc/eval_371.csv` — o conjunto de avaliação das LLMs: os
+   379 comentários de código MENOS os 8 usados como exemplo.
 
 ## Por que os exemplos saem da avaliação
 
@@ -236,11 +238,6 @@ def main() -> int:
             "votos": {a: bool(r[f"voto__{a}"]) for a in ("Wendell", "Bruno", "Miguel")},
         })
 
-    # --- conjunto de avaliação: 379 menos os 8 ---------------------------
-    restantes = novos.loc[~novos.item_id.isin(ids_exemplo)].copy()
-    restantes["origem"] = "amostra_269"
-    restantes["gold"] = restantes.gold_is_ubw.astype(bool)
-
     t385 = pd.read_csv(GOLD_385, low_memory=False)
     col_gold = next(c for c in t385.columns if "gold" in c.lower())
     herdados = t385.loc[t385.artifact_type == "code_comment"].copy()
@@ -253,12 +250,27 @@ def main() -> int:
     # Wendell), e sem estas colunas a análise não pode ser repetida aqui. As
     # duas fontes usam nomes diferentes -- `voto__` nos 269, `vote__` nos 385.
     for nome in ("Wendell", "Bruno", "Miguel"):
-        restantes[f"vote__{nome}"] = restantes[f"voto__{nome}"].astype(bool)
+        novos[f"vote__{nome}"] = novos[f"voto__{nome}"].astype(bool)
         herdados[f"vote__{nome}"] = herdados[f"vote__{nome}"].astype(bool)
 
     campos = ["item_id", "origem", "repo_full_name", "matched_expression",
               "body_text", "url", "gold",
               "vote__Wendell", "vote__Bruno", "vote__Miguel"]
+
+    # Gabarito humano completo. Ele sustenta a estimativa de precisão do
+    # dataset. Os exemplos few-shot só precisam sair da avaliação automática.
+    novos["origem"] = "amostra_269"
+    novos["gold"] = novos.gold_is_ubw.astype(bool)
+    human_gold = pd.concat([novos[campos], herdados[campos]], ignore_index=True)
+
+    corpos_gold = []
+    for t in human_gold.body_text.astype(str):
+        c, _, _ = mascarar(t, mask_mentions=True)
+        corpos_gold.append(c)
+    human_gold["body_text"] = corpos_gold
+
+    # --- conjunto de avaliação das LLMs: 379 menos os 8 ------------------
+    restantes = novos.loc[~novos.item_id.isin(ids_exemplo)].copy()
     aval = pd.concat([restantes[campos], herdados[campos]], ignore_index=True)
 
     corpos, contas_aval = [], {}
@@ -306,6 +318,13 @@ def main() -> int:
             "os 8 item_id do pool foram removidos da avaliação: 379 -> "
             f"{len(aval)}. Negativos caíram de 28 para {n_neg}."
         ),
+        "human_gold_n": len(human_gold),
+        "human_gold_positivos": int(human_gold.gold.sum()),
+        "human_gold_negativos": int((~human_gold.gold).sum()),
+        "nota_estimativa_dataset": (
+            "human_gold_379.csv usa os 379 itens humanos. A retirada dos 8 "
+            "exemplos se aplica somente a eval_371.csv, usado para avaliar LLMs."
+        ),
         "nota_janela_truncada": (
             "8 dos 28 negativos do conjunto de 379 (29%) não exibem a "
             "expressão-gatilho no body_text: a janela de ±3 linhas é truncada "
@@ -318,6 +337,7 @@ def main() -> int:
     }
     (SAIDA / "exemplar_pool.json").write_text(
         json.dumps(pool, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    human_gold.to_csv(SAIDA / "human_gold_379.csv", index=False)
     aval.to_csv(SAIDA / f"eval_{len(aval)}.csv", index=False)
     (SAIDA / "manifest.json").write_text(
         json.dumps(manifesto, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

@@ -1,0 +1,4 @@
+artifact_type,registros,repositorios,chars_mediana,chars_p90,participacao
+commit_message,43351,13349,133.0,986.0,0.474
+code_comment,26036,9584,304.0,468.0,0.2847
+pr_body,22071,9557,588.0,2600.0,0.2413
