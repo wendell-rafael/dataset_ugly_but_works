@@ -1,0 +1,39 @@
+{
+  "script": "06_export_publishable.py",
+  "script_version": "1.0.0",
+  "generated_at_utc": "2026-09-15T12:51:36.648614+00:00",
+  "input_file": "/tmp/ubw_scope_91458_raw.csv",
+  "input_row_count": 91458,
+  "rows_by_artifact_type": {
+    "commit_message": 43351,
+    "pr_body": 22071,
+    "code_comment": 26036
+  },
+  "rows_with_any_pii_in_body_text": 9806,
+  "rows_with_pii_by_artifact_type": {
+    "pr_body": 2917,
+    "commit_message": 6003,
+    "code_comment": 886
+  },
+  "pii_counts_by_label": {
+    "coauthor_trailer": 2,
+    "email": 51936,
+    "mention": 13460,
+    "private_key": 3,
+    "signedoff_trailer": 89,
+    "token_google_api_key": 1,
+    "token_jwt": 4,
+    "url_credential": 28
+  },
+  "examples_truncated": {
+    "mention": [],
+    "email": [],
+    "signedoff_trailer": [],
+    "url_credential": [],
+    "token_jwt": [],
+    "coauthor_trailer": [],
+    "private_key": [],
+    "token_google_api_key": []
+  },
+  "note": "Varredura sobre o arquivo informado apenas -- se a coleta ainda estiver rodando (sem sentinela de conclusao), estes numeros sao PARCIAIS, nao o corpus final."
+}
