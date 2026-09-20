@@ -1,11 +1,22 @@
 # gh-satd-miner
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22861637.svg)](https://doi.org/10.5281/zenodo.22861637)
+
 Infraestrutura de coleta usada no estudo empírico **UBW ("Ugly But It Works")**
 — pesquisa de mestrado (PPGCC/UFCG, orientação do Prof. João Arthur Brunet
 Monteiro) sobre comentários de "resignação funcional": o desenvolvedor admite
 que uma solução é feia ou é um hack, mas mantém porque funciona. O léxico é
 minerado em quatro tipos de artefato do GitHub — comentário de código,
 mensagem de commit, corpo de issue e corpo de pull request.
+
+Esta é uma ferramenta de mineração de escopo mais amplo que a primeira versão
+do **UBWSet**. O dataset publicado contém somente comentários de código; o
+minerador preserva suporte aos quatro tipos de artefato para permitir novas
+coletas e estudos posteriores. O dataset e o software recebem citações e
+identificadores persistentes separados.
+
+A versão arquivada do software é identificada por
+[10.5281/zenodo.22861637](https://doi.org/10.5281/zenodo.22861637).
 
 Este README cobre a infraestrutura de software (coleta, resiliência,
 desempenho). Para a metodologia científica (critérios de inclusão, léxico,
@@ -141,6 +152,11 @@ manualmente de uma página conhecida.
 
 ## Autoria e citação
 
-Desenvolvido por Wendell Nascimento (PPGCC/UFCG), sob orientação do Prof.
-João Arthur Brunet Monteiro, como infraestrutura de suporte à dissertação
-de mestrado sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
+Desenvolvido por Wendell Rafael Oliveira Nascimento, João Arthur Brunet
+Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
+pesquisa sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
+
+Ao utilizar o software, cite a versão arquivada no Zenodo. Os metadados de
+citação também estão em [`CITATION.cff`](CITATION.cff). O DOI da versão será
+adicionado a esta seção depois da criação da release no GitHub e do
+arquivamento automático pelo Zenodo.
