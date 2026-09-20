@@ -15,8 +15,10 @@ minerador preserva suporte aos quatro tipos de artefato para permitir novas
 coletas e estudos posteriores. O dataset e o software recebem citações e
 identificadores persistentes separados.
 
-A versão arquivada do software é identificada por
-[10.5281/zenodo.22861637](https://doi.org/10.5281/zenodo.22861637).
+Para citar a versão reprodutível usada em um estudo, utilize o DOI da versão
+1.0.1: [10.5281/zenodo.22861637](https://doi.org/10.5281/zenodo.22861637).
+O DOI conceitual, que aponta para a versão mais recente do software, é
+[10.5281/zenodo.22861636](https://doi.org/10.5281/zenodo.22861636).
 
 Este README cobre a infraestrutura de software (coleta, resiliência,
 desempenho). Para a metodologia científica (critérios de inclusão, léxico,
