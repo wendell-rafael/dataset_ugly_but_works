@@ -15,6 +15,11 @@ minerador preserva suporte aos quatro tipos de artefato para permitir novas
 coletas e estudos posteriores. O dataset e o software recebem citações e
 identificadores persistentes separados.
 
+O UBWSet v1.0.0 está disponível em
+[10.5281/zenodo.22775107](https://doi.org/10.5281/zenodo.22775107). Seu DOI
+conceitual, que aponta para a versão mais recente do dataset, é
+[10.5281/zenodo.22775104](https://doi.org/10.5281/zenodo.22775104).
+
 Para citar a versão reprodutível usada em um estudo, utilize o DOI da versão
 1.0.1: [10.5281/zenodo.22861637](https://doi.org/10.5281/zenodo.22861637).
 O DOI conceitual, que aponta para a versão mais recente do software, é
