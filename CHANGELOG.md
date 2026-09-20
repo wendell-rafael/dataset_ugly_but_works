@@ -1,10 +1,8 @@
 # Changelog
 
-Histórico consolidado da infraestrutura de software (não do dataset em si —
-para resultados de cada rodada de coleta, ver `RESULTADOS_*.md`). Datas
-refletem quando o problema foi identificado e corrigido, não necessariamente
-commits formais (o projeto ainda não tinha controle de versão até este
-registro).
+Histórico consolidado da infraestrutura de software, separado dos dados e
+dos relatórios de cada rodada de coleta. As datas refletem quando o problema
+foi identificado e corrigido, não necessariamente commits formais.
 
 ## 2026-07-14 — contaminação por arquivo gerado/build em code_comment
 

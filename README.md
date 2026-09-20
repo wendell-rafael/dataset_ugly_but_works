@@ -7,10 +7,14 @@ que uma solução é feia ou é um hack, mas mantém porque funciona. O léxico 
 minerado em quatro tipos de artefato do GitHub — comentário de código,
 mensagem de commit, corpo de issue e corpo de pull request.
 
+Esta release contém somente o software. O UBWSet v1.0.0 é um artefato de
+dados separado e contém apenas comentários de código. O minerador preserva
+suporte aos quatro tipos de artefato para permitir novas coletas e estudos
+posteriores.
+
 Este README cobre a infraestrutura de software (coleta, resiliência,
-desempenho). Para a metodologia científica (critérios de inclusão, léxico,
-RQs), ver [`plano.md`](plano.md); para resultados de cada rodada, ver os
-`RESULTADOS_*.md`.
+desempenho). Os protocolos de pesquisa, dados e resultados de validação são
+distribuídos separadamente do software.
 
 ## O que a infraestrutura resolve
 
@@ -84,11 +88,10 @@ scripts/
 ├── 02_collect_multiartifact.py coleta multi-artefato do léxico
 ├── 03_metrics_llm_triage.py    amostragem, pré-triagem LLM, métricas de concordância
 ├── 04_pattern_mining.py         mineração exploratória de novas expressões
-└── generate_report_figures.py   geração dos gráficos usados nos relatórios
+└── demais scripts               exportação, verificação e análise complementar
 
-plano.md                     metodologia científica completa (fonte de verdade das RQs)
 LEXICO.md                    documentação de todas as expressões/padrões em uso
-RESULTADOS_*.md              relatórios de cada rodada de coleta
+CHANGELOG.md                 histórico de evolução da infraestrutura
 ```
 
 ## Instalação
@@ -141,6 +144,11 @@ manualmente de uma página conhecida.
 
 ## Autoria e citação
 
-Desenvolvido por Wendell Nascimento (PPGCC/UFCG), sob orientação do Prof.
-João Arthur Brunet Monteiro, como infraestrutura de suporte à dissertação
-de mestrado sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
+Desenvolvido por Wendell Rafael Oliveira Nascimento, João Arthur Brunet
+Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
+pesquisa sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
+
+Ao utilizar o software, cite a versão arquivada no Zenodo. Os metadados de
+citação também estão em [`CITATION.cff`](CITATION.cff). O DOI da versão será
+adicionado a esta seção depois da criação da release no GitHub e do
+arquivamento automático pelo Zenodo.

@@ -1,0 +1,30 @@
+{
+  "title": "gh-satd-miner: resilient multi-artifact mining for GitHub repositories",
+  "description": "gh-satd-miner is a resilient mining pipeline for empirical software-engineering studies of self-admitted technical debt in GitHub repositories. It retrieves lexicon matches from code comments, commit messages, issue bodies, and pull-request bodies. The pipeline provides token rotation, batched GitHub Search API queries, incremental checkpoints, recovery from transient failures, and repository name canonicalization. It accompanies UBWSet, a dataset of ugly-but-it-works admissions in code comments.",
+  "creators": [
+    {
+      "name": "Nascimento, Wendell Rafael Oliveira",
+      "affiliation": "Programa de Pós-Graduação em Ciência da Computação, Universidade Federal de Campina Grande"
+    },
+    {
+      "name": "Monteiro, João Arthur Brunet",
+      "affiliation": "Universidade Federal de Campina Grande"
+    },
+    {
+      "name": "Morais, Fabio Jorge Almeida",
+      "affiliation": "Universidade Federal de Campina Grande"
+    }
+  ],
+  "access_right": "open",
+  "license": "MIT",
+  "upload_type": "software",
+  "version": "1.0.1",
+  "publication_date": "2026-09-20",
+  "keywords": [
+    "mining software repositories",
+    "self-admitted technical debt",
+    "GitHub",
+    "empirical software engineering"
+  ],
+  "language": "eng"
+}
