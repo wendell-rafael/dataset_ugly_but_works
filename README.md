@@ -1,6 +1,6 @@
 # gh-satd-miner
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22861637.svg)](https://doi.org/10.5281/zenodo.22861637)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23537045.svg)](https://doi.org/10.5281/zenodo.23537045)
 
 Infraestrutura de coleta usada no estudo empírico **UBW ("Ugly But It Works")**
 — pesquisa de mestrado (PPGCC/UFCG, orientação do Prof. João Arthur Brunet
@@ -16,28 +16,28 @@ minerador preserva suporte aos quatro tipos de artefato para permitir novas
 coletas e estudos posteriores. O dataset e o software recebem citações e
 identificadores persistentes separados.
 
-O UBWSet v1.0.0 está disponível em
+O UBWSet v1.0.1, versão descrita no artigo submetido ao MSR 2027, está
+disponível em [10.5281/zenodo.23366779](https://doi.org/10.5281/zenodo.23366779);
+a v1.0.0 continua em
 [10.5281/zenodo.22775107](https://doi.org/10.5281/zenodo.22775107). Seu DOI
 conceitual, que aponta para a versão mais recente do dataset, é
 [10.5281/zenodo.22775104](https://doi.org/10.5281/zenodo.22775104).
 
-A versão 1.0.1 do dataset, descrita no artigo submetido ao MSR 2027, está
-pronta para depósito. Ela tem 26.030 registros de 9.584 repositórios: os
+A versão 1.0.1 tem 26.030 registros de 9.584 repositórios: os
 contextos de código recuperaram as quebras de linha, o dicionário de dados e
 as diretrizes de anotação foram traduzidos para o inglês, e um registro antes
 excluído voltou a ter a expressão visível. O pacote é gerado em
 `release/ubw-code-comments-v1.0.1.zip` pelos scripts `22`, `24` e `25`.
 
 Para citar a última versão arquivada do software, utilize o DOI da versão
-1.0.1: [10.5281/zenodo.22861637](https://doi.org/10.5281/zenodo.22861637).
+1.0.2, usada para construir o UBWSet 1.0.1:
+[10.5281/zenodo.23537045](https://doi.org/10.5281/zenodo.23537045).
 O DOI conceitual, que aponta para a versão mais recente do software, é
 [10.5281/zenodo.22861636](https://doi.org/10.5281/zenodo.22861636).
 
-O código-fonte atual corresponde à versão 1.0.2 do software, ainda não
-depositada. Essa versão fixa uma única data de corte entre retomadas da coleta,
+A versão 1.0.2 do software fixa uma única data de corte entre retomadas da coleta,
 restaura as quebras de linha dos contextos de código e acrescenta a geração,
-validação e embalagem reproduzível do UBWSet 1.0.1. Depois do depósito, os
-metadados devem receber o novo DOI específico de versão.
+validação e embalagem reproduzível do UBWSet 1.0.1.
 
 ## Licenças dos trechos de código e pedidos de remoção
 
@@ -219,6 +219,7 @@ Desenvolvido por Wendell Rafael Oliveira Nascimento, David Candeia Medeiros
 Maia, João Arthur Brunet Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
 pesquisa sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
 
-Ao utilizar o software, cite uma versão arquivada no Zenodo. Os metadados da
-versão em preparação estão em [`CITATION.cff`](CITATION.cff). O DOI específico
-da versão 1.0.2 deverá ser acrescentado depois do novo depósito.
+Ao utilizar o software, cite uma versão arquivada no Zenodo. Os metadados de
+citação da versão 1.0.2 (DOI
+[10.5281/zenodo.23537045](https://doi.org/10.5281/zenodo.23537045)) estão em
+[`CITATION.cff`](CITATION.cff).
