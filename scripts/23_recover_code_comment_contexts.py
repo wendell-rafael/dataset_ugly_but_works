@@ -29,6 +29,10 @@ from ubw.lexicon import expression_in_text
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CORPUS = ROOT / "data/full_run/ubw_collected_consolidated.csv"
 DEFAULT_OUT = ROOT / "validation/code_comment_context_repairs.csv"
+# Modo --all: recupera as quebras de linha de todos os contextos. A coleta do
+# full_run gravou a janela de +/-3 linhas sem os separadores de linha; o
+# arquivo no commit de introdução permite refazer a janela exata.
+DEFAULT_ALL_OUT = ROOT / "validation/code_comment_context_linebreaks.csv"
 FIELDS = [
     "record_id", "repository", "artifact_id", "matched_expression",
     "introduction_commit", "file_path", "line_number", "status",
@@ -119,6 +123,43 @@ def rebuild_context(content: str, expression: str, expected_line: int) -> tuple[
     return (excerpt, index + 1) if visible(expression, excerpt) else (None, index + 1)
 
 
+def exact_window(content: str, expression: str, line_number: int) -> str | None:
+    """Janela de +/-3 linhas centrada exatamente em `line_number`, como na
+    coleta (get_context_window), aceita só se a expressão estiver nessa linha."""
+    lines = content.splitlines()
+    if not 1 <= line_number <= len(lines):
+        return None
+    if not visible(expression, lines[line_number - 1]):
+        return None
+    start = max(0, line_number - 1 - 3)
+    window = "\n".join(lines[start:line_number + 3])[:2000]
+    return window if visible(expression, window) else None
+
+
+def recover_exact(row: dict) -> dict:
+    content, detail = fetch_file(row["repo_full_name"], row["sha"], row["path"])
+    result = {
+        "record_id": row["record_id"], "repository": row["repo_full_name"],
+        "artifact_id": row["artifact_id"], "matched_expression": row["matched_expression"],
+        "introduction_commit": row["sha"], "file_path": row["path"],
+        "line_number": row["line_number"], "status": "fetch_failed",
+        "resolved_line_number": "", "original_context_sha256": row["original_hash"],
+        "repaired_body_text": "", "detail": detail,
+    }
+    if content is None:
+        return result
+    window = exact_window(content, row["matched_expression"], row["line_number"])
+    if window is None:
+        result["status"] = "line_mismatch"
+        result["detail"] = "expressão ausente na linha registrada"
+    else:
+        result["status"] = "recovered"
+        result["resolved_line_number"] = row["line_number"]
+        result["repaired_body_text"] = window
+        result["detail"] = ""
+    return result
+
+
 def recover(row: dict) -> dict:
     content, detail = fetch_file(row["repo_full_name"], row["sha"], row["path"])
     result = {
@@ -146,18 +187,24 @@ def recover(row: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--corpus", default=str(DEFAULT_CORPUS))
-    parser.add_argument("--out", default=str(DEFAULT_OUT))
+    parser.add_argument("--out", default=None,
+                        help="Padrão: reparos de contexto invisível, ou o log de quebras de linha com --all.")
+    parser.add_argument("--all", action="store_true",
+                        help="Refaz a janela exata de todos os comentários de código, não só os invisíveis.")
     parser.add_argument("--max-workers", type=int, default=8)
     parser.add_argument("--limit", type=int)
     args = parser.parse_args()
 
     raw = pd.read_csv(args.corpus, low_memory=False)
     cc = raw.loc[raw.artifact_type.eq("code_comment")].copy()
-    missing = ~pd.Series([
-        visible(str(expr), str(text))
-        for expr, text in zip(cc.matched_expression, cc.body_text)
-    ], index=cc.index)
-    targets = cc.loc[missing].copy()
+    if args.all:
+        targets = cc.copy()
+    else:
+        missing = ~pd.Series([
+            visible(str(expr), str(text))
+            for expr, text in zip(cc.matched_expression, cc.body_text)
+        ], index=cc.index)
+        targets = cc.loc[missing].copy()
     targets["record_id"] = targets.apply(stable_record_id, axis=1)
     parsed = targets.url.str.extract(
         r"^https://github\.com/([^/]+/[^/]+)/blob/([0-9a-f]{40})/(.+)#L(\d+)$"
@@ -169,7 +216,10 @@ def main() -> None:
         lambda x: hashlib.sha256(x.encode()).hexdigest()
     )
 
-    out = Path(args.out)
+    out = Path(args.out or (DEFAULT_ALL_OUT if args.all else DEFAULT_OUT))
+    # Ordena por arquivo para aproveitar o cache de fetch_file.
+    targets = targets.sort_values(["repo_full_name", "sha", "path"])
+    worker = recover_exact if args.all else recover
     out.parent.mkdir(parents=True, exist_ok=True)
     completed: set[str] = set()
     if out.exists() and out.stat().st_size:
@@ -188,7 +238,7 @@ def main() -> None:
     counts: dict[str, int] = {}
     with out.open("a", encoding="utf-8", newline="") as handle:
         with ThreadPoolExecutor(max_workers=args.max_workers) as pool:
-            futures = [pool.submit(recover, row) for row in rows]
+            futures = [pool.submit(worker, row) for row in rows]
             for number, future in enumerate(as_completed(futures), 1):
                 result = future.result()
                 with write_lock:

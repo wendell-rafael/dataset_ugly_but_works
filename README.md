@@ -2,13 +2,18 @@
 
 Infraestrutura de coleta usada no estudo empírico **UBW ("Ugly But It Works")**
 — pesquisa de mestrado (PPGCC/UFCG, orientação do Prof. João Arthur Brunet
-Monteiro) sobre comentários de "resignação funcional": o desenvolvedor admite
-que uma solução é feia ou é um hack, mas mantém porque funciona. O léxico é
+Monteiro, com participação do Prof. David Candeia Medeiros Maia, IFPB) sobre
+comentários de aceitação pragmática: o desenvolvedor admite que uma solução é
+feia ou é um hack, mas a mantém porque funciona. O léxico é
 minerado em quatro tipos de artefato do GitHub — comentário de código,
 mensagem de commit, corpo de issue e corpo de pull request.
 
-Esta release contém somente o software. O UBWSet v1.0.0 é um artefato de
-dados separado e contém apenas comentários de código. O minerador preserva
+Esta release contém somente o software, na versão 1.0.2, usada para
+construir o UBWSet 1.0.1. O dataset é um artefato de dados separado
+(DOI conceitual [10.5281/zenodo.22775104](https://doi.org/10.5281/zenodo.22775104))
+e contém apenas comentários de código. Regenerar o release do dataset com
+`scripts/22_prepare_code_comment_release.py` exige os insumos de coleta e
+validação, que não acompanham este pacote. O minerador preserva
 suporte aos quatro tipos de artefato para permitir novas coletas e estudos
 posteriores.
 
@@ -144,8 +149,8 @@ manualmente de uma página conhecida.
 
 ## Autoria e citação
 
-Desenvolvido por Wendell Rafael Oliveira Nascimento, João Arthur Brunet
-Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
+Desenvolvido por Wendell Rafael Oliveira Nascimento, David Candeia Medeiros
+Maia, João Arthur Brunet Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
 pesquisa sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
 
 Ao utilizar o software, cite a versão arquivada no Zenodo. Os metadados de
