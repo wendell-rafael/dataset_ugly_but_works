@@ -4,8 +4,9 @@
 
 Infraestrutura de coleta usada no estudo empírico **UBW ("Ugly But It Works")**
 — pesquisa de mestrado (PPGCC/UFCG, orientação do Prof. João Arthur Brunet
-Monteiro) sobre comentários de "resignação funcional": o desenvolvedor admite
-que uma solução é feia ou é um hack, mas mantém porque funciona. O léxico é
+Monteiro, com participação do Prof. David Candeia Medeiros Maia, IFPB) sobre
+comentários de aceitação pragmática: o desenvolvedor admite que uma solução é
+feia ou é um hack, mas a mantém porque funciona. O léxico é
 minerado em quatro tipos de artefato do GitHub — comentário de código,
 mensagem de commit, corpo de issue e corpo de pull request.
 
@@ -20,10 +21,33 @@ O UBWSet v1.0.0 está disponível em
 conceitual, que aponta para a versão mais recente do dataset, é
 [10.5281/zenodo.22775104](https://doi.org/10.5281/zenodo.22775104).
 
-Para citar a versão reprodutível usada em um estudo, utilize o DOI da versão
+A versão 1.0.1 do dataset, descrita no artigo submetido ao MSR 2027, está
+pronta para depósito. Ela tem 26.030 registros de 9.584 repositórios: os
+contextos de código recuperaram as quebras de linha, o dicionário de dados e
+as diretrizes de anotação foram traduzidos para o inglês, e um registro antes
+excluído voltou a ter a expressão visível. O pacote é gerado em
+`release/ubw-code-comments-v1.0.1.zip` pelos scripts `22`, `24` e `25`.
+
+Para citar a última versão arquivada do software, utilize o DOI da versão
 1.0.1: [10.5281/zenodo.22861637](https://doi.org/10.5281/zenodo.22861637).
 O DOI conceitual, que aponta para a versão mais recente do software, é
 [10.5281/zenodo.22861636](https://doi.org/10.5281/zenodo.22861636).
+
+O código-fonte atual corresponde à versão 1.0.2 do software, ainda não
+depositada. Essa versão fixa uma única data de corte entre retomadas da coleta,
+restaura as quebras de linha dos contextos de código e acrescenta a geração,
+validação e embalagem reproduzível do UBWSet 1.0.1. Depois do depósito, os
+metadados devem receber o novo DOI específico de versão.
+
+## Licenças dos trechos de código e pedidos de remoção
+
+Os trechos de código do UBWSet continuam sujeitos às licenças dos repositórios
+de origem; ser público no GitHub não concede, por si só, direito de
+redistribuição. Mantenedores que quiserem retirar registros dos seus
+repositórios de versões futuras do dataset podem abrir uma
+[issue](https://github.com/wendell-rafael/dataset_ugly_but_works/issues)
+informando o nome do repositório. Os registros retirados são listados no
+changelog da versão seguinte.
 
 Este README cobre a infraestrutura de software (coleta, resiliência,
 desempenho). Para a metodologia científica (critérios de inclusão, léxico,
@@ -133,11 +157,42 @@ python 05_canonicalize_repos.py --repos-csv ../data/repos_to_mine.csv \
 
 # 3. Coleta multi-artefato: aplica o léxico aos 4 tipos de artefato
 python 02_collect_multiartifact.py \
-    --repos-csv ../data/repos_to_mine_canonical.csv --out-dir ../data
+    --repos-csv ../data/repos_to_mine_canonical.csv --out-dir ../data \
+    --collection-cutoff 2026-07-23T23:59:59Z
 
 # 4. (opcional) Pré-triagem por LLM antes da anotação humana
 python 03_metrics_llm_triage.py llm-triage \
     --candidates ../data/ubw_collected_full.csv --out ../data/llm_triage_results.csv
+```
+
+Na primeira execução, a coleta grava a data de corte em
+`OUT_DIR/COLLECTION_CUTOFF`. Toda retomada reutiliza esse valor. Se uma data
+explícita diferente for fornecida para o mesmo diretório, o processo é
+interrompido para evitar durações censuradas incompatíveis.
+
+## Geração do pacote UBWSet
+
+O snapshot publicado pode ser regenerado a partir do corpus consolidado sem
+alterar a versão 1.0.0:
+
+```bash
+python scripts/22_prepare_code_comment_release.py \
+    --release-version 1.0.1 \
+    --collection-cutoff 2026-07-23T23:59:59Z
+python scripts/24_validate_code_comment_release.py \
+    release/ubw-code-comments-v1.0.1
+python scripts/25_package_code_comment_release.py \
+    release/ubw-code-comments-v1.0.1
+```
+
+O validador confere schema, chaves, votos, contagens, hashes, consistência
+temporal, cobertura do dicionário de dados e o exemplo de uso. O pacote gerado
+fica em `release/ubw-code-comments-v1.0.1.zip`.
+
+Os testes locais da regra de data de corte podem ser executados com:
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
 Todos os scripts de etapa longa (1 a 4) suportam interrupção e retomada —
@@ -147,9 +202,10 @@ manualmente de uma página conhecida.
 
 ## Limitações conhecidas
 
-- Sem suíte de testes automatizada. A validação de correções foi feita com
-  smoke tests manuais, não CI/pytest — o histórico de bugs pegos assim está
-  no `CHANGELOG.md`.
+- A suíte automatizada atual cobre a persistência da data de corte e a
+  consistência temporal do release, mas ainda não cobre toda a coleta contra
+  GitHub e SEART-GHS. Mudanças nesses caminhos também exigem smoke tests em
+  amostras pequenas antes de uma execução em escala.
 - Acoplado a esta pesquisa (schema do plano, léxico fechado, endpoint do
   SEART-GHS) — não é uma biblioteca genérica, embora `ubw/github_api.py` e
   o padrão de checkpoint incremental sirvam em outros contextos.
@@ -159,11 +215,10 @@ manualmente de uma página conhecida.
 
 ## Autoria e citação
 
-Desenvolvido por Wendell Rafael Oliveira Nascimento, João Arthur Brunet
-Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
+Desenvolvido por Wendell Rafael Oliveira Nascimento, David Candeia Medeiros
+Maia, João Arthur Brunet Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
 pesquisa sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
 
-Ao utilizar o software, cite a versão arquivada no Zenodo. Os metadados de
-citação também estão em [`CITATION.cff`](CITATION.cff). O DOI da versão será
-adicionado a esta seção depois da criação da release no GitHub e do
-arquivamento automático pelo Zenodo.
+Ao utilizar o software, cite uma versão arquivada no Zenodo. Os metadados da
+versão em preparação estão em [`CITATION.cff`](CITATION.cff). O DOI específico
+da versão 1.0.2 deverá ser acrescentado depois do novo depósito.

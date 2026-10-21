@@ -57,6 +57,7 @@ from ubw.dlq import DeadLetterQueue  # noqa: E402
 from ubw.envutil import load_dotenv  # noqa: E402
 from ubw.github_api import GitHubAPIError, GitHubClient  # noqa: E402
 from ubw.schema import UBWRecord  # noqa: E402
+from ubw.temporal import days_between, parse_iso_datetime, resolve_collection_cutoff  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -93,29 +94,11 @@ logger = logging.getLogger("ubw.collect")
 GIT_TIMEOUT_SECONDS = 300
 GIT_CLONE_TIMEOUT_SECONDS = 900
 
-# Fixada uma única vez no início da execução, usada para todo cálculo de
-# censura/tempo até evento (Seção 3.4 — reprodutibilidade).
+# Definida em main() por resolve_collection_cutoff(). O valor é persistido no
+# diretório de saída antes de a coleta começar e reutilizado nas retomadas.
+# Assim, uma coleta interrompida não atribui tempos de censura diferentes a
+# registros processados em execuções distintas.
 COLLECTION_CUTOFF = dt.datetime.now(dt.timezone.utc)
-
-
-# Utilitários gerais
-
-def parse_iso_datetime(value: Optional[str]) -> Optional[dt.datetime]:
-    if not value:
-        return None
-    try:
-        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=dt.timezone.utc)
-        return parsed
-    except ValueError:
-        return None
-
-
-def days_between(start: Optional[dt.datetime], end: Optional[dt.datetime]) -> Optional[int]:
-    if start is None or end is None:
-        return None
-    return max(0, (end - start).days)
 
 
 class CheckpointState:
@@ -1230,6 +1213,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", default="../data")
     parser.add_argument("--clone-dir", default="../data/clones")
     parser.add_argument("--state-file", default="../data/collection_state.json")
+    parser.add_argument(
+        "--collection-cutoff",
+        default=None,
+        help=(
+            "Data/hora ISO 8601 usada para censura. Na primeira execução, o valor é "
+            "gravado em OUT_DIR/COLLECTION_CUTOFF; retomadas reutilizam esse arquivo."
+        ),
+    )
     parser.add_argument("--github-token", default=None, help="Padrão: variável de ambiente GITHUB_TOKEN.")
     parser.add_argument(
         "--github-tokens", default=None,
@@ -1258,9 +1249,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    global COLLECTION_CUTOFF
     args = parse_args()
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    COLLECTION_CUTOFF = resolve_collection_cutoff(out_dir, args.collection_cutoff)
+    logger.info("Data de corte da coleta: %s", COLLECTION_CUTOFF.isoformat())
     clone_root = Path(args.clone_dir)
 
     tokens_arg = args.github_tokens or os.environ.get("GITHUB_TOKENS")
