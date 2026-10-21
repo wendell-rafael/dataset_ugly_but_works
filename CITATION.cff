@@ -33,6 +33,7 @@ authors:
 # diretamente no formulário de registro, fora do controle de versão.
 license: MIT
 version: 1.0.2
+doi: 10.5281/zenodo.23537045
 date-released: "2026-10-21"
 url: "https://github.com/wendell-rafael/dataset_ugly_but_works"
 repository-code: "https://github.com/wendell-rafael/dataset_ugly_but_works"
