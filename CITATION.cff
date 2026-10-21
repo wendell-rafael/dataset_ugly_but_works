@@ -15,6 +15,9 @@ authors:
     family-names: "Oliveira Nascimento"
     email: wendell.nascimento@copin.ufcg.edu.br
     affiliation: "Programa de Pós-Graduação em Ciência da Computação (PPGCC), Universidade Federal de Campina Grande (UFCG)"
+  - given-names: "David Candeia"
+    family-names: "Medeiros Maia"
+    affiliation: "Instituto Federal de Educação, Ciência e Tecnologia da Paraíba (IFPB)"
   - given-names: "João Arthur"
     family-names: "Brunet Monteiro"
     email: joao.arthur@computacao.ufcg.edu.br
@@ -29,8 +32,9 @@ authors:
 # é metadado de citação, esperado público. Preencher esses dados
 # diretamente no formulário de registro, fora do controle de versão.
 license: MIT
-version: 1.0.1
-date-released: "2026-09-20"
+version: 1.0.2
+date-released: "2026-10-21"
+url: "https://github.com/wendell-rafael/dataset_ugly_but_works"
 repository-code: "https://github.com/wendell-rafael/dataset_ugly_but_works"
 keywords:
   - mineração de repositórios

@@ -4,6 +4,32 @@ Histórico consolidado da infraestrutura de software, separado dos dados e
 dos relatórios de cada rodada de coleta. As datas refletem quando o problema
 foi identificado e corrigido, não necessariamente commits formais.
 
+## 2026-10-21 — quebras de linha restauradas e UBWSet 1.0.1 final
+
+- `23_recover_code_comment_contexts.py --all` relê cada arquivo no commit de
+  introdução e reconstrói a janela de contexto centrada na linha registrada,
+  com as quebras de linha que a coleta original perdia.
+- `22_prepare_code_comment_release.py` aplica essas janelas antes dos demais
+  reparos, publica dicionário de dados e diretrizes de anotação em inglês e
+  mantém o original em português como `ANNOTATION_GUIDELINE.pt.md`.
+- O UBWSet 1.0.1 passa a ter 26.030 registros: um registro antes excluído
+  voltou a ter a expressão visível no contexto restaurado.
+- README e metadados documentam as licenças dos trechos de código e o pedido
+  de remoção por issue; David Candeia Medeiros Maia entra como autor.
+
+## 2026-09-23 — data de corte persistente e release verificável
+
+- `02_collect_multiartifact.py` agora grava a data de corte antes da coleta e
+  a reutiliza em retomadas. Uma tentativa de continuar o mesmo diretório com
+  outra data falha explicitamente.
+- `22_prepare_code_comment_release.py` recalcula todas as durações censuradas
+  contra `2026-07-23T23:59:59Z`, preservando durações de remoções observadas.
+- A versão 1.0.1 do dataset passa a incluir README em inglês, metadados de
+  citação, changelog, exemplo executável, dicionário completo e manifesto sem
+  caminho local privado.
+- Novos scripts validam o release e criam um ZIP reproduzível. Testes cobrem a
+  persistência e o conflito da data de corte.
+
 ## 2026-07-14 — contaminação por arquivo gerado/build em code_comment
 
 Análise da rodada de 3.000 repositórios (`data/full_run/`) achou 31,2% dos

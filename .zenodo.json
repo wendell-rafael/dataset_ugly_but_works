@@ -7,6 +7,10 @@
       "affiliation": "Programa de Pós-Graduação em Ciência da Computação, Universidade Federal de Campina Grande"
     },
     {
+      "name": "Maia, David Candeia Medeiros",
+      "affiliation": "Instituto Federal de Educação, Ciência e Tecnologia da Paraíba"
+    },
+    {
       "name": "Monteiro, João Arthur Brunet",
       "affiliation": "Universidade Federal de Campina Grande"
     },
@@ -18,13 +22,20 @@
   "access_right": "open",
   "license": "MIT",
   "upload_type": "software",
-  "version": "1.0.1",
-  "publication_date": "2026-09-20",
+  "version": "1.0.2",
+  "publication_date": "2026-10-21",
   "keywords": [
     "mining software repositories",
     "self-admitted technical debt",
     "GitHub",
     "empirical software engineering"
   ],
-  "language": "eng"
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.22775104",
+      "relation": "isSupplementTo",
+      "resource_type": "dataset"
+    }
+  ]
 }

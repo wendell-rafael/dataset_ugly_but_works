@@ -93,3 +93,11 @@ venv/
 # SO / editor
 .DS_Store
 *.swp
+
+# Pacotes de release (vão para o Zenodo, não para o git) e rascunhos locais.
+release/
+tmp/
+
+# Janelas de contexto relidas do GitHub SEM mascaramento de PII (e-mails,
+# menções, credenciais em comentários). Só o release mascarado é publicado.
+validation/code_comment_context_linebreaks.csv
