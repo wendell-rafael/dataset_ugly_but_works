@@ -58,10 +58,11 @@ ambiente").
   documentados no `CHANGELOG.md` com a causa raiz e o exemplo real que
   motivou a correção, não só a mudança de código — isso importa para a
   seção de ameaças à validade da dissertação.
-- Sem suíte de testes automatizada ainda. A prática atual é smoke test
-  manual: rodar a mudança contra uma amostra pequena (dezenas de
-  repositórios) e inspecionar a saída antes de rodar em escala. Se você
-  adicionar testes automatizados (`pytest`), é uma contribuição bem-vinda.
+- Execute `python -m unittest discover -s tests -v` antes de enviar uma
+  mudança. A suíte atual cobre as invariantes temporais e deve ser ampliada
+  quando uma nova regra reproduzível for acrescentada. Mudanças na coleta
+  contra GitHub ou SEART-GHS também exigem um smoke test manual em uma amostra
+  pequena antes da execução em escala.
 
 ## Como reportar um problema
 

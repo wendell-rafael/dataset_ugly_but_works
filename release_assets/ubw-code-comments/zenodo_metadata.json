@@ -1,0 +1,43 @@
+{
+  "title": "UBWSet: A Dataset of Ugly-But-It-Works Comments Mined from Git Histories",
+  "upload_type": "dataset",
+  "description": "UBWSet contains 26,030 lexicon-mined source-code comment records from the Git histories of 9,584 public GitHub repositories. Each record includes textual context, repository provenance, an introduction commit, a source permalink, and temporal information. Independent human annotation of a random sample of 379 records estimates the mining precision at 92.6% (95% Wilson confidence interval: 89.5%–94.8%).",
+  "creators": [
+    {
+      "name": "Nascimento, Wendell Rafael Oliveira",
+      "affiliation": "Programa de Pós-Graduação em Ciência da Computação, Universidade Federal de Campina Grande"
+    },
+    {
+      "name": "Maia, David Candeia Medeiros",
+      "affiliation": "Instituto Federal de Educação, Ciência e Tecnologia da Paraíba"
+    },
+    {
+      "name": "Monteiro, João Arthur Brunet",
+      "affiliation": "Universidade Federal de Campina Grande"
+    }
+  ],
+  "access_right": "open",
+  "license": "cc-by-4.0",
+  "version": "{{RELEASE_VERSION}}",
+  "publication_date": "2026-10-21",
+  "language": "eng",
+  "keywords": [
+    "self-admitted technical debt",
+    "mining software repositories",
+    "source-code comments",
+    "software evolution",
+    "GitHub"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.22861636",
+      "relation": "isSupplementedBy",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "https://github.com/wendell-rafael/dataset_ugly_but_works",
+      "relation": "isSupplementedBy",
+      "resource_type": "software"
+    }
+  ]
+}

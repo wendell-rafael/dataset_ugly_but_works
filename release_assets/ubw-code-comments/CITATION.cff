@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use UBWSet, please cite the version-specific Zenodo record."
+type: dataset
+title: "UBWSet: A Dataset of Ugly-But-It-Works Comments Mined from Git Histories"
+authors:
+  - given-names: "Wendell Rafael"
+    family-names: "Oliveira Nascimento"
+    affiliation: "Programa de Pós-Graduação em Ciência da Computação, Universidade Federal de Campina Grande"
+  - given-names: "David Candeia"
+    family-names: "Medeiros Maia"
+    affiliation: "Instituto Federal de Educação, Ciência e Tecnologia da Paraíba"
+  - given-names: "João Arthur"
+    family-names: "Brunet Monteiro"
+    affiliation: "Universidade Federal de Campina Grande"
+version: "{{RELEASE_VERSION}}"
+date-released: "2026-10-21"
+license: CC-BY-4.0
+url: "https://doi.org/10.5281/zenodo.22775104"
+repository-code: "https://github.com/wendell-rafael/dataset_ugly_but_works"
+keywords:
+  - self-admitted technical debt
+  - software repository mining
+  - source-code comments
+  - software evolution
+  - GitHub
