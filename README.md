@@ -215,8 +215,8 @@ manualmente de uma página conhecida.
 
 ## Autoria e citação
 
-Desenvolvido por Wendell Rafael Oliveira Nascimento, David Candeia Medeiros
-Maia, João Arthur Brunet Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
+Desenvolvido por Wendell Rafael Oliveira Nascimento, João Arthur Brunet
+Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
 pesquisa sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
 
 Ao utilizar o software, cite uma versão arquivada no Zenodo. Os metadados de

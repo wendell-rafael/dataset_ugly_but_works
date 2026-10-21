@@ -17,7 +17,8 @@ registro).
 - O UBWSet 1.0.1 passa a ter 26.030 registros: um registro antes excluído
   voltou a ter a expressão visível no contexto restaurado.
 - README e metadados documentam as licenças dos trechos de código e o pedido
-  de remoção por issue; David Candeia Medeiros Maia entra como autor.
+  de remoção por issue; David Candeia Medeiros Maia entra como autor do
+  dataset (o software segue com Wendell, João Arthur e Fabio).
 
 ## 2026-09-23 — data de corte persistente e release verificável
 
