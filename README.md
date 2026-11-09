@@ -1,179 +1,178 @@
 # gh-satd-miner
 
+English | [Português](README.pt.md)
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23537045.svg)](https://doi.org/10.5281/zenodo.23537045)
 
-Infraestrutura de coleta usada no estudo empírico **UBW ("Ugly But It Works")**
-— pesquisa de mestrado (PPGCC/UFCG, orientação do Prof. João Arthur Brunet
-Monteiro, com participação do Prof. David Candeia Medeiros Maia, IFPB) sobre
-comentários de aceitação pragmática: o desenvolvedor admite que uma solução é
-feia ou é um hack, mas a mantém porque funciona. O léxico é
-minerado em quatro tipos de artefato do GitHub — comentário de código,
-mensagem de commit, corpo de issue e corpo de pull request.
+Mining infrastructure for the empirical study of **UBW ("Ugly But It Works")**
+comments, developed in a master's research project at PPGCC/UFCG (advisor:
+Prof. João Arthur Brunet Monteiro; with Prof. David Candeia Medeiros Maia,
+IFPB). UBW comments record pragmatic acceptance: the developer admits that a
+solution is ugly or a hack but keeps it because it works. The lexicon is mined
+from four GitHub artifact types: code comments, commit messages, issue bodies,
+and pull request bodies.
 
-Esta é uma ferramenta de mineração de escopo mais amplo que a primeira versão
-do **UBWSet**. O dataset publicado contém somente comentários de código; o
-minerador preserva suporte aos quatro tipos de artefato para permitir novas
-coletas e estudos posteriores. O dataset e o software recebem citações e
-identificadores persistentes separados.
+This tool has a broader scope than the first version of **UBWSet**. The
+published dataset contains code comments only; the miner keeps support for all
+four artifact types to enable new collections and later studies. The dataset
+and the software have separate citations and persistent identifiers.
 
-O UBWSet v1.0.1, versão descrita no artigo submetido ao MSR 2027, está
-disponível em [10.5281/zenodo.23366779](https://doi.org/10.5281/zenodo.23366779);
-a v1.0.0 continua em
-[10.5281/zenodo.22775107](https://doi.org/10.5281/zenodo.22775107). Seu DOI
-conceitual, que aponta para a versão mais recente do dataset, é
+UBWSet v1.0.1, the version described in the paper submitted to MSR 2027, is
+available at [10.5281/zenodo.23366779](https://doi.org/10.5281/zenodo.23366779);
+v1.0.0 remains at
+[10.5281/zenodo.22775107](https://doi.org/10.5281/zenodo.22775107). The
+dataset's concept DOI, which always resolves to its latest version, is
 [10.5281/zenodo.22775104](https://doi.org/10.5281/zenodo.22775104).
 
-A versão 1.0.1 tem 26.030 registros de 9.584 repositórios: os
-contextos de código recuperaram as quebras de linha, o dicionário de dados e
-as diretrizes de anotação foram traduzidos para o inglês, e um registro antes
-excluído voltou a ter a expressão visível. O pacote é gerado em
-`release/ubw-code-comments-v1.0.1.zip` pelos scripts `22`, `24` e `25`.
+Version 1.0.1 contains 26,030 records from 9,584 repositories: code contexts
+regained their line breaks, the data dictionary and annotation guidelines were
+translated into English, and one previously excluded record has its expression
+visible again. The package is built as `release/ubw-code-comments-v1.0.1.zip`
+by scripts `22`, `24`, and `25`.
 
-Para citar a última versão arquivada do software, utilize o DOI da versão
-1.0.2, usada para construir o UBWSet 1.0.1:
+To cite the latest archived version of the software, use the DOI of version
+1.0.2, which was used to build UBWSet 1.0.1:
 [10.5281/zenodo.23537045](https://doi.org/10.5281/zenodo.23537045).
-O DOI conceitual, que aponta para a versão mais recente do software, é
+The software's concept DOI, which always resolves to its latest version, is
 [10.5281/zenodo.22861636](https://doi.org/10.5281/zenodo.22861636).
 
-A versão 1.0.2 do software fixa uma única data de corte entre retomadas da coleta,
-restaura as quebras de linha dos contextos de código e acrescenta a geração,
-validação e embalagem reproduzível do UBWSet 1.0.1.
+Software version 1.0.2 fixes a single collection cutoff date across resumed
+runs, restores line breaks in code contexts, and adds reproducible generation,
+validation, and packaging of UBWSet 1.0.1.
 
-## Licenças dos trechos de código e pedidos de remoção
+## Licenses of code excerpts and removal requests
 
-Os trechos de código do UBWSet continuam sujeitos às licenças dos repositórios
-de origem; ser público no GitHub não concede, por si só, direito de
-redistribuição. Mantenedores que quiserem retirar registros dos seus
-repositórios de versões futuras do dataset podem abrir uma
+UBWSet code excerpts remain subject to the licenses of their source
+repositories; being public on GitHub does not, by itself, grant redistribution
+rights. Maintainers who want records from their repositories removed from
+future dataset versions can open an
 [issue](https://github.com/wendell-rafael/dataset_ugly_but_works/issues)
-informando o nome do repositório. Os registros retirados são listados no
-changelog da versão seguinte.
+with the repository name. Removed records are listed in the changelog of the
+following version.
 
-Este README cobre a infraestrutura de software (coleta, resiliência,
-desempenho). Para a metodologia científica (critérios de inclusão, léxico,
-RQs), ver [`plano.md`](plano.md); para resultados de cada rodada, ver os
-`RESULTADOS_*.md`.
+This README covers the software infrastructure (collection, resilience,
+performance). The scientific methodology (inclusion criteria, lexicon, research
+questions) is in [`plano.md`](plano.md), in Portuguese; the change history is
+in [`CHANGELOG.md`](CHANGELOG.md).
 
-## O que a infraestrutura resolve
+## What the infrastructure handles
 
-Minerar dezenas de milhares de repositórios por quatro tipos de artefato
-esbarra em rate limit, timeout, e serviços de terceiro instáveis. O que foi
-implementado pra isso:
+Mining tens of thousands of repositories across four artifact types runs into
+rate limits, timeouts, and unstable third-party services. The following was
+implemented to deal with them.
 
-Rotação de múltiplos tokens do GitHub (`ubw/github_api.py`), round-robin,
-cada token com seu próprio estado de rate limit — multiplica o throughput
-sem violar o limite de nenhum token individual.
+Rotation of multiple GitHub tokens (`ubw/github_api.py`), round-robin, each
+token with its own rate-limit state. This multiplies throughput without
+exceeding the limit of any single token.
 
-A Search API aceita múltiplos qualificadores `repo:` numa mesma query
-(semântica OR, verificada empiricamente). A coleta agrupa repositórios em
-lotes por query, respeitando o teto de 256 caracteres do parâmetro `q`, o
-que reduziu a fase de busca via API de ~5,8h para ~48min num corpus de 784
-repositórios. Quando uma expressão comum estoura o teto de 1000 resultados
-da Search API dentro de um lote, a coleta detecta e refaz a busca por
-repositório individual pra não perder recall.
+The Search API accepts multiple `repo:` qualifiers in one query (OR semantics,
+verified empirically). Collection groups repositories into batches per query,
+within the 256-character limit of the `q` parameter, which cut the API search
+phase from about 5.8 h to about 48 min on a corpus of 784 repositories. When a
+common expression exceeds the Search API's 1,000-result ceiling within a
+batch, collection detects it and repeats the search per repository so that
+recall is not lost.
 
-Checkpoint incremental em todas as etapas longas (triagem, coleta,
-pré-triagem por LLM, mineração de padrões): o próprio arquivo de saída
-funciona como checkpoint, e uma interrupção (crash, reinício de máquina,
-rate limit) não derruba o progresso já feito. Isso não era assim desde o
-início — o projeto já perdeu execuções inteiras de horas por gravar
-resultado só no final, ver `CHANGELOG.md`.
+Incremental checkpoints in every long stage (screening, collection, LLM
+pre-triage, pattern mining): the output file itself acts as the checkpoint, so
+an interruption (crash, machine restart, rate limit) does not discard
+completed work. See `CHANGELOG.md` for the runs lost before this was in place.
 
-Um circuit breaker no cliente HTTP (`ubw/github_api.py`) detecta outage
-sustentado do GitHub e falha rápido em vez de insistir em retry+backoff
-completo a cada chamada. Uma Dead Letter Queue (`ubw/dlq.py`) registra
-repositórios que falham repetidamente em `code_comment` (clone impossível,
-repo apagado) e para de retentá-los depois de N tentativas, em vez de
-ficarem "pendentes pra sempre" a cada retomada.
+A circuit breaker in the HTTP client (`ubw/github_api.py`) detects sustained
+GitHub outages and fails fast instead of running a full retry-and-backoff cycle
+on every call. A dead letter queue (`ubw/dlq.py`) records repositories that
+repeatedly fail in `code_comment` (clone impossible, repository deleted) and
+stops retrying them after N attempts, instead of leaving them pending on every
+resume.
 
-O serviço de triagem (SEART-GHS) tem dois problemas reais de TLS do lado
-deles: não envia o certificado intermediário no handshake, e o certificado
-expirou em julho/2026. `ubw/tls_fix.py` completa a cadeia via AIA (como um
-navegador faz) e usa fixação de impressão digital SHA-256 pra tolerar o
-certificado vencido sem desabilitar verificação TLS de forma genérica.
+The screening service (SEART-GHS) has two TLS problems on its side: it does not
+send the intermediate certificate in the handshake, and its certificate expired
+in July 2026. `ubw/tls_fix.py` completes the chain through AIA, as a browser
+does, and uses SHA-256 fingerprint pinning to tolerate the expired certificate
+without disabling TLS verification in general.
 
-Repositórios renomeados entre a indexação do SEART-GHS e a coleta quebram
-o qualificador `repo:` da Search API (HTTP 422) e podem duplicar entradas
-no corpus. `scripts/05_canonicalize_repos.py` resolve o nome atual via
-redirect da REST API antes de coletar.
+Repositories renamed between SEART-GHS indexing and collection break the
+Search API `repo:` qualifier (HTTP 422) and can duplicate corpus entries.
+`scripts/05_canonicalize_repos.py` resolves the current name through the REST
+API redirect before collection.
 
-Filtros de precisão vieram de falsos positivos reais encontrados na
-mineração: código vendorizado (por caminho e por nome de arquivo), autores
-bot, frase do léxico "colando" através de quebra de linha ou item de
-lista, e correspondência textual normalizada (a Search API faz stemming e
-retorna falso positivo).
+Precision filters came from real false positives found during mining: vendored
+code (by path and by file name), bot authors, lexicon phrases spanning a line
+break or list item, and normalized text matching (the Search API applies
+stemming and returns false positives).
 
-Cada registro guarda os identificadores brutos disponíveis do autor de
-introdução (nome/login/e-mail, conforme o canal) mais um hash SHA-256 —
-pra permitir contato numa survey futura sem expor o dado bruto quando o
-dataset for publicado.
+Each record keeps the raw identifiers available for the introducing author
+(name, login, or e-mail, depending on the channel) plus a SHA-256 hash, so that
+authors can be contacted for a future survey without exposing raw data when the
+dataset is published.
 
-## Estrutura do repositório
+## Repository structure
 
 ```
-ubw/                        pacote de suporte compartilhado por todos os scripts
-├── schema.py                schema de coleta (colunas, critérios de inclusão, hash de autor)
-├── lexicon.py                léxico fechado de expressões + filtros de precisão
-├── patterns.py                padrões estruturais exploratórios (regex)
-├── github_api.py              cliente HTTP com rotação de tokens, rate limiting e circuit breaker
-├── dlq.py                      Dead Letter Queue para falhas persistentes de repositório
-├── tls_fix.py                    workarounds de TLS para o SEART-GHS
-└── envutil.py                   utilitário de carregamento de .env
+ubw/                         support package shared by all scripts
+├── schema.py                collection schema (columns, inclusion criteria, author hash)
+├── lexicon.py               closed lexicon of expressions + precision filters
+├── patterns.py              exploratory structural patterns (regex)
+├── github_api.py            HTTP client with token rotation, rate limiting, and circuit breaker
+├── dlq.py                   dead letter queue for persistent repository failures
+├── tls_fix.py               TLS workarounds for SEART-GHS
+└── envutil.py               .env loading utility
 
 scripts/
-├── 01_screening_seart.py      triagem de repositórios (SEART-GHS)
-├── 05_canonicalize_repos.py   canonicalização de nomes (pré-passo da coleta)
-├── 02_collect_multiartifact.py coleta multi-artefato do léxico
-├── 03_metrics_llm_triage.py    amostragem, pré-triagem LLM, métricas de concordância
-├── 04_pattern_mining.py         mineração exploratória de novas expressões
-└── generate_report_figures.py   geração dos gráficos usados nos relatórios
+├── 01_screening_seart.py         repository screening (SEART-GHS)
+├── 05_canonicalize_repos.py      name canonicalization (pre-collection step)
+├── 02_collect_multiartifact.py   multi-artifact lexicon collection
+├── 03_metrics_llm_triage.py      sampling, LLM pre-triage, agreement metrics
+├── 04_pattern_mining.py          exploratory mining of new expressions
+└── generate_report_figures.py    figures used in the reports
 
-plano.md                     metodologia científica completa (fonte de verdade das RQs)
-LEXICO.md                    documentação de todas as expressões/padrões em uso
-RESULTADOS_*.md              relatórios de cada rodada de coleta
+plano.md                     full scientific methodology (Portuguese)
+LEXICO.md                    documentation of all expressions and patterns in use
+validation/                  human-validation materials and votes
+release_assets/              files shipped with the UBWSet package
+tests/                       automated tests
 ```
 
-## Instalação
+## Installation
 
-Requer Python 3.10+ (nesta máquina, `python3` aponta pra 3.12 sem pandas —
-usar `python3.10` explicitamente; ver `CHANGELOG.md`).
+Requires Python 3.10 or later.
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env  # preencher GITHUB_TOKEN(S) e, opcionalmente, ANTHROPIC_API_KEY/OPENROUTER_API_KEY
+cp .env.example .env  # set GITHUB_TOKEN(S) and, optionally, ANTHROPIC_API_KEY/OPENROUTER_API_KEY
 ```
 
-## Uso (ordem típica do pipeline)
+## Usage (typical pipeline order)
 
 ```bash
 cd scripts
 
-# 1. Triagem: descobre repositórios elegíveis (Seção 2.2 do plano)
+# 1. Screening: finds eligible repositories
 python 01_screening_seart.py --out ../data/repos_to_mine.csv
 
-# 2. Canonicalização: resolve renomeações antes da coleta
+# 2. Canonicalization: resolves renames before collection
 python 05_canonicalize_repos.py --repos-csv ../data/repos_to_mine.csv \
     --out ../data/repos_to_mine_canonical.csv
 
-# 3. Coleta multi-artefato: aplica o léxico aos 4 tipos de artefato
+# 3. Multi-artifact collection: applies the lexicon to the 4 artifact types
 python 02_collect_multiartifact.py \
     --repos-csv ../data/repos_to_mine_canonical.csv --out-dir ../data \
     --collection-cutoff 2026-07-23T23:59:59Z
 
-# 4. (opcional) Pré-triagem por LLM antes da anotação humana
+# 4. (optional) LLM pre-triage before human annotation
 python 03_metrics_llm_triage.py llm-triage \
     --candidates ../data/ubw_collected_full.csv --out ../data/llm_triage_results.csv
 ```
 
-Na primeira execução, a coleta grava a data de corte em
-`OUT_DIR/COLLECTION_CUTOFF`. Toda retomada reutiliza esse valor. Se uma data
-explícita diferente for fornecida para o mesmo diretório, o processo é
-interrompido para evitar durações censuradas incompatíveis.
+On the first run, collection writes the cutoff date to
+`OUT_DIR/COLLECTION_CUTOFF`. Every resume reuses that value. If a different
+explicit date is given for the same directory, the process stops to avoid
+incompatible censored durations.
 
-## Geração do pacote UBWSet
+## Building the UBWSet package
 
-O snapshot publicado pode ser regenerado a partir do corpus consolidado sem
-alterar a versão 1.0.0:
+The published snapshot can be regenerated from the consolidated corpus without
+changing version 1.0.0:
 
 ```bash
 python scripts/22_prepare_code_comment_release.py \
@@ -185,41 +184,41 @@ python scripts/25_package_code_comment_release.py \
     release/ubw-code-comments-v1.0.1
 ```
 
-O validador confere schema, chaves, votos, contagens, hashes, consistência
-temporal, cobertura do dicionário de dados e o exemplo de uso. O pacote gerado
-fica em `release/ubw-code-comments-v1.0.1.zip`.
+The validator checks schema, keys, votes, counts, hashes, temporal
+consistency, data-dictionary coverage, and the usage example. The generated
+package is written to `release/ubw-code-comments-v1.0.1.zip`.
 
-Os testes locais da regra de data de corte podem ser executados com:
+The local tests of the cutoff-date rule can be run with:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-Todos os scripts de etapa longa (1 a 4) suportam interrupção e retomada —
-basta rodar o mesmo comando de novo, sem flag especial. A exceção é
-`01_screening_seart.py`, que aceita `--resume-from-page N` pra retomar
-manualmente de uma página conhecida.
+All long-running scripts (1 to 4) support interruption and resumption: run
+the same command again, with no special flag. The exception is
+`01_screening_seart.py`, which accepts `--resume-from-page N` to resume
+manually from a known page.
 
-## Limitações conhecidas
+## Known limitations
 
-- A suíte automatizada atual cobre a persistência da data de corte e a
-  consistência temporal do release, mas ainda não cobre toda a coleta contra
-  GitHub e SEART-GHS. Mudanças nesses caminhos também exigem smoke tests em
-  amostras pequenas antes de uma execução em escala.
-- Acoplado a esta pesquisa (schema do plano, léxico fechado, endpoint do
-  SEART-GHS) — não é uma biblioteca genérica, embora `ubw/github_api.py` e
-  o padrão de checkpoint incremental sirvam em outros contextos.
-- O workaround de certificado TLS (`ubw/tls_fix.py`) é temporário: remover
-  do uso normal assim que o SEART-GHS renovar o certificado deles.
-- Caminhos relativos (`../data/...`) assumem execução a partir de `scripts/`.
+- The current automated suite covers cutoff-date persistence and the temporal
+  consistency of the release, but not the whole collection against GitHub and
+  SEART-GHS. Changes to those paths also require smoke tests on small samples
+  before a full-scale run.
+- Coupled to this research (study schema, closed lexicon, SEART-GHS endpoint);
+  it is not a general-purpose library, although `ubw/github_api.py` and the
+  incremental checkpoint pattern can be reused elsewhere.
+- The TLS certificate workaround (`ubw/tls_fix.py`) is temporary: remove it
+  from normal use once SEART-GHS renews its certificate.
+- Relative paths (`../data/...`) assume execution from `scripts/`.
 
-## Autoria e citação
+## Authorship and citation
 
-Desenvolvido por Wendell Rafael Oliveira Nascimento, João Arthur Brunet
-Monteiro e Fabio Jorge Almeida Morais, como infraestrutura de suporte à
-pesquisa sobre o fenômeno UBW. Licenciado sob MIT (ver `LICENSE`).
+Developed by Wendell Rafael Oliveira Nascimento, João Arthur Brunet Monteiro,
+and Fabio Jorge Almeida Morais as supporting infrastructure for research on the
+UBW phenomenon. Licensed under MIT (see `LICENSE`).
 
-Ao utilizar o software, cite uma versão arquivada no Zenodo. Os metadados de
-citação da versão 1.0.2 (DOI
-[10.5281/zenodo.23537045](https://doi.org/10.5281/zenodo.23537045)) estão em
+When using the software, cite an archived version on Zenodo. Citation metadata
+for version 1.0.2 (DOI
+[10.5281/zenodo.23537045](https://doi.org/10.5281/zenodo.23537045)) are in
 [`CITATION.cff`](CITATION.cff).

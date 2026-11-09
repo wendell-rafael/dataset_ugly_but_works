@@ -9,9 +9,11 @@ data/
 *.csv
 *.jsonl
 
-# Config local do Claude Code (permissões específicas da máquina).
-# launch.json é compartilhável e fica versionado; settings.local.json não.
-.claude/settings.local.json
+# Config local do Claude Code, rascunhos do artigo (o artigo vive no Overleaf)
+# e documentos superados: ficam só na máquina, fora do repositório público.
+.claude/
+paper/
+obsoleto/
 
 # Amostras/batches de rodadas superadas por decisão de reunião (categoria
 # como dimensão analítica abandonada, issue_body removido) e execuções de
